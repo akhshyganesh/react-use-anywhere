@@ -27,3 +27,13 @@ export type {
 // Utilities
 export { withHookInjection } from './hoc/withHookInjection';
 export { HookInjectionError } from './errors/HookInjectionError';
+
+// Version compatibility utilities
+export {
+  isReactVersionSupported,
+  checkReactVersion,
+  getReactVersion,
+  getCompatibilityInfo,
+  logCompatibilityInfo,
+  assertReactCompatibility,
+} from './utils/reactVersionCheck';

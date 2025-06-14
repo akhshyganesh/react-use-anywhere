@@ -18,6 +18,14 @@ export function createHookInjectionService<T = any>(
   let hook: T | null = initialValue;
   let isHookReady = !!initialValue;
 
+  console.log('Creating HookInjectionService with options:', {
+    enableWarnings,
+    fallbackBehavior,
+    timeout,
+    initialValue,
+    validator,
+  });
+
   const service: HookInjectionServiceInterface<T> = {
     setHook(newHook: T): void {
       // Validate hook if validator is provided

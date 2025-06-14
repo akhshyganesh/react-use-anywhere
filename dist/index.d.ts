@@ -6,3 +6,4 @@ export { createNavigationService, createSingletonNavigationService, getSingleton
 export type { HookInjectionContext, NavigationHook, HookInjectionProviderProps, NavigationServiceInterface, HookInjectionServiceInterface, } from './types';
 export { withHookInjection } from './hoc/withHookInjection';
 export { HookInjectionError } from './errors/HookInjectionError';
+export { isReactVersionSupported, checkReactVersion, getReactVersion, getCompatibilityInfo, logCompatibilityInfo, assertReactCompatibility, } from './utils/reactVersionCheck';

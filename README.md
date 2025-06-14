@@ -10,13 +10,14 @@ A production-ready React library that enables safe usage of React hooks in non-R
 
 - ✅ **Production Ready**: Fully tested and optimized for production use
 - ✅ **TypeScript Support**: Complete TypeScript definitions and type safety
-- ✅ **React Compatibility**: Supports React 16.8+ (all versions with hooks)
-- ✅ **Zero Dependencies**: No multiple React instances issues
-- ✅ **Router Agnostic**: Works with any React router (react-router-dom, reach-router, etc.)
+- ✅ **Universal React Compatibility**: Supports **ALL React versions with hooks** (16.8.0 through 18.x)
+- ✅ **Zero Dependencies**: No multiple React instances issues - uses peer dependencies
+- ✅ **Router Agnostic**: Works with any React router (react-router v5/v6, reach-router, custom routers)
 - ✅ **Error Management**: Comprehensive error handling and fallback mechanisms
 - ✅ **Flexible Patterns**: Singleton, factory, and provider patterns
 - ✅ **Automatic Injection**: Easy-to-use hooks for automatic dependency injection
 - ✅ **Tree Shakeable**: Optimized bundle size with ES modules
+- ✅ **Concurrent Mode Ready**: Compatible with React 18 concurrent features
 
 ## 📦 Installation
 
@@ -138,6 +139,33 @@ export function logoutUser() {
 
 ## 📚 API Reference
 
+### 🔄 React Version Compatibility
+
+This library is designed to work with **ALL React versions that support hooks**:
+
+| React Version | Compatibility | Notes |
+|---------------|---------------|-------|
+| 16.8.0 - 16.x | ✅ Full Support | Original hooks implementation |
+| 17.0.0 - 17.x | ✅ Full Support | Event delegation changes - no impact |
+| 18.0.0 - 18.x | ✅ Full Support | Concurrent features supported |
+| 19.0.0+ | 🧪 Future Ready | Will be tested when available |
+
+**Supported React Features:**
+- `useEffect` (16.8.0+) - Used for hook injection lifecycle
+- `useRef` (16.8.0+) - Used for stable references
+- `useContext` (16.8.0+) - Used for provider pattern
+- `useMemo` (16.8.0+) - Used for performance optimization
+- `createContext` (16.3.0+) - Used for dependency injection
+
+**Router Compatibility:**
+- React Router v5 (`useHistory`) ✅
+- React Router v6 (`useNavigate`) ✅
+- Reach Router (`navigate`) ✅
+- Custom router implementations ✅
+- Next.js Router (`useRouter`) ✅
+
+> 📖 **Detailed Compatibility Guide**: See [REACT_COMPATIBILITY.md](./REACT_COMPATIBILITY.md) for comprehensive version-specific examples and migration guides.
+
 ### Components
 
 #### `HookInjectionProvider`
@@ -234,6 +262,83 @@ interface NavigationServiceInterface {
 ```
 
 ## 🔧 Advanced Usage
+
+### React Version Specific Examples
+
+#### React 16.8 - 17.x with React Router v5
+```tsx
+import { useHistory } from 'react-router-dom';
+import { HookInjectionProvider } from 'react-hook-injection-pattern';
+
+function App() {
+  const history = useHistory();
+  
+  return (
+    <HookInjectionProvider 
+      navigationHook={() => history.push}
+    >
+      <Routes />
+    </HookInjectionProvider>
+  );
+}
+```
+
+#### React 18.x with React Router v6 
+```tsx
+import { useNavigate } from 'react-router-dom';
+import { HookInjectionProvider } from 'react-hook-injection-pattern';
+
+function App() {
+  return (
+    <HookInjectionProvider 
+      navigationHook={useNavigate}
+    >
+      <Routes />
+    </HookInjectionProvider>
+  );
+}
+```
+
+#### Next.js (Any React Version)
+```tsx
+import { useRouter } from 'next/router';
+import { HookInjectionProvider } from 'react-hook-injection-pattern';
+
+function MyApp({ Component, pageProps }) {
+  const router = useRouter();
+  
+  return (
+    <HookInjectionProvider 
+      navigationHook={() => router.push}
+    >
+      <Component {...pageProps} />
+    </HookInjectionProvider>
+  );
+}
+```
+
+#### Custom Router Implementation
+```tsx
+import { HookInjectionProvider } from 'react-hook-injection-pattern';
+
+// Your custom navigation hook
+const useCustomNavigation = () => {
+  return (path: string, options?: any) => {
+    // Your custom navigation logic
+    window.location.href = path;
+  };
+};
+
+function App() {
+  return (
+    <HookInjectionProvider 
+      navigationHook={useCustomNavigation}
+    >
+      <AppContent />
+    </HookInjectionProvider>
+  );
+}
+```
 
 ### Custom Hook Injection
 
