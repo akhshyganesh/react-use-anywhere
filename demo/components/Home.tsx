@@ -15,12 +15,18 @@ export const Home: React.FC = () => {
 
   const handleTokenCheck = () => {
     simulateTokenCheck();
-    setTimeout(() => {
+  };
+
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
       console.log('Navigating to login...');
       navigateToLogin();
     }, 1000);
-  };
 
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, []);
   const handleThemeToggle = () => {
     if (injectedHooks.theme) {
       injectedHooks.theme.toggleTheme();
