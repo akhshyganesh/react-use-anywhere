@@ -6,8 +6,8 @@ We welcome contributions to the React Hook Injection Pattern library! This docum
 
 1. **Fork and Clone**:
    ```bash
-   git clone https://github.com/your-username/react-hook-injection-pattern.git
-   cd react-hook-injection-pattern
+   git clone https://github.com/your-username/react-use-anywhere.git
+   cd react-use-anywhere
    ```
 
 2. **Install Dependencies**:

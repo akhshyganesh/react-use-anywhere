@@ -4,7 +4,7 @@ import {
   getCompatibilityInfo,
   isReactVersionSupported,
   createSingletonNavigationService 
-} from 'react-hook-injection-pattern';
+} from 'react-use-anywhere';
 
 // This example shows how the library works with ANY React version
 

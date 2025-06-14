@@ -33,7 +33,7 @@ npm start
 ### 1. Provider Setup
 ```tsx
 // App.tsx
-import { HookInjectionProvider } from 'react-hook-injection-pattern';
+import { HookInjectionProvider } from 'react-use-anywhere';
 import { useNavigate } from 'react-router-dom';
 
 <HookInjectionProvider navigationHook={useNavigate}>
@@ -46,7 +46,7 @@ import { useNavigate } from 'react-router-dom';
 ### 2. Service Creation
 ```typescript
 // services/navigationService.ts
-import { createSingletonNavigationService } from 'react-hook-injection-pattern';
+import { createSingletonNavigationService } from 'react-use-anywhere';
 
 export const navigationService = createSingletonNavigationService();
 ```
@@ -54,7 +54,7 @@ export const navigationService = createSingletonNavigationService();
 ### 3. Hook Injection
 ```tsx
 // components/HomePage.tsx
-import { useHookInjection } from 'react-hook-injection-pattern';
+import { useHookInjection } from 'react-use-anywhere';
 
 function HomePage() {
   useHookInjection(navigationService);
