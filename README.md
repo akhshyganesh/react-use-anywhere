@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A production-ready React library that enables safe usage of React hooks in non-React files through the dependency injection pattern. Perfect for services, utilities, and business logic that need access to React hooks like `useNavigate`, `useAuth`, or custom hooks.
+A production-ready React library that enables safe usage of React hooks in non-React files through the dependency injection pattern. **Router-agnostic** and works with **any React hooks** - not just navigation hooks.
 
 ## 🚀 Features
 
@@ -12,7 +12,8 @@ A production-ready React library that enables safe usage of React hooks in non-R
 - ✅ **TypeScript Support**: Complete TypeScript definitions and type safety
 - ✅ **Universal React Compatibility**: Supports **ALL React versions with hooks** (16.8.0 through 18.x)
 - ✅ **Zero Dependencies**: No multiple React instances issues - uses peer dependencies
-- ✅ **Router Agnostic**: Works with any React router (react-router v5/v6, reach-router, custom routers)
+- ✅ **Hook-Agnostic**: Works with **any React hooks** - navigation, auth, state, custom hooks, etc.
+- ✅ **Router-Agnostic**: Works with any React router (react-router, @tanstack/router, reach-router, custom routers)
 - ✅ **Error Management**: Comprehensive error handling and fallback mechanisms
 - ✅ **Flexible Patterns**: Singleton, factory, and provider patterns
 - ✅ **Automatic Injection**: Easy-to-use hooks for automatic dependency injection
@@ -45,48 +46,187 @@ React hooks can only be used within React function components or custom hooks. T
 
 ## 💡 The Solution
 
-The React Hook Injection Pattern solves this by using dependency injection to provide hook values to non-React code through:
+The React Hook Injection Pattern provides a clean way to inject any React hook into non-React files through:
 
-1. **Context Provider**: Captures hook values at the React component level
-2. **Service Injection**: Injects hook values into services and utilities
-3. **Type Safety**: Maintains full TypeScript support throughout the chain
+1. **Provider Pattern**: Wrap your app with `HookInjectionProvider` 
+2. **Service Pattern**: Create services that can receive hooks
+3. **Automatic Injection**: Use `useHookInjection` to automatically inject hooks into services
 
 ## 🏁 Quick Start
 
-### 1. Wrap your app with the provider
+### 1. Basic Usage - Any Hook
+
+```tsx
+import React from 'react';
+import { HookInjectionProvider, createHookService, useHookInjection } from 'react-hook-injection-pattern';
+
+// Create a service for any hook
+const authService = createHookService();
+
+// Your custom hook
+function useAuth() {
+  return {
+    user: { name: 'John' },
+    login: () => {},
+    logout: () => {}
+  };
+}
+
+function App() {
+  return (
+    <HookInjectionProvider hooks={{ auth: useAuth }}>
+      <HomePage />
+    </HookInjectionProvider>
+  );
+}
+
+function HomePage() {
+  // Inject the auth hook into the service
+  useHookInjection(authService, 'auth');
+  
+  // Now authService can be used in any file
+  return <div>Welcome!</div>;
+}
+```
+
+### 2. Navigation Example (works with any router)
 
 ```tsx
 import React from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
-import { HookInjectionProvider } from 'react-hook-injection-pattern';
-import App from './App';
+// or import { useRouter } from '@tanstack/router';
+// or any other router hook
+import { HookInjectionProvider, createHookService, useHookInjection } from 'react-hook-injection-pattern';
+
+const navigationService = createHookService();
 
 function Root() {
   return (
     <BrowserRouter>
-      <HookInjectionProvider navigationHook={useNavigate}>
+      <HookInjectionProvider hooks={{ navigate: useNavigate }}>
         <App />
       </HookInjectionProvider>
     </BrowserRouter>
   );
 }
+
+function App() {
+  // Inject the navigation hook into the service
+  useHookInjection(navigationService, 'navigate');
+  
+  return <HomePage />;
+}
 ```
 
-### 2. Create a navigation service
+### 3. Use the service in any file
 
 ```typescript
-import { createSingletonNavigationService } from 'react-hook-injection-pattern';
+// services/userService.ts
+import { navigationService } from './navigationService';
 
-export const navigationService = createSingletonNavigationService({
-  enableWarnings: true,
-  fallbackBehavior: 'warn',
+export function handleLogout() {
+  clearUserData();
+  
+  // Use the injected navigation hook
+  navigationService.execute((navigate) => {
+    navigate('/login');
+  });
+}
+```
+
+## 🎨 Advanced Examples
+
+### Multiple Hooks
+
+```tsx
+import { HookInjectionProvider, createHookService, useHookInjection } from 'react-hook-injection-pattern';
+
+const authService = createHookService();
+const themeService = createHookService();
+const queryService = createHookService();
+
+function App() {
+  return (
+    <HookInjectionProvider hooks={{
+      auth: useAuth,
+      theme: useTheme,
+      query: useQuery
+    }}>
+      <HomePage />
+    </HookInjectionProvider>
+  );
+}
+
+function HomePage() {
+  useHookInjection(authService, 'auth');
+  useHookInjection(themeService, 'theme');
+  useHookInjection(queryService, 'query');
+  
+  return <div>All services ready!</div>;
+}
+```
+
+### TanStack Router Example
+
+```tsx
+import { useRouter } from '@tanstack/router';
+import { HookInjectionProvider, createHookService } from 'react-hook-injection-pattern';
+
+const routerService = createHookService();
+
+function App() {
+  return (
+    <HookInjectionProvider hooks={{ router: useRouter }}>
+      <HomePage />
+    </HookInjectionProvider>
+  );
+}
+
+// Usage in service files
+routerService.execute((router) => {
+  router.navigate({ to: '/dashboard' });
 });
 ```
 
-### 3. Use in React components
+## 📚 API Reference
+
+### Core Functions
+
+#### `createHookService<T>(options?)`
+Creates a generic service that can store and use any hook.
+
+```typescript
+import { createHookService } from 'react-hook-injection-pattern';
+
+const authService = createHookService({
+  enableWarnings: true,
+  fallbackBehavior: 'warn',
+  validator: (hook) => typeof hook === 'object' && 'user' in hook
+});
+```
+
+#### `HookInjectionProvider`
+Provider component that makes hooks available to services.
 
 ```tsx
-import React from 'react';
+<HookInjectionProvider hooks={{
+  auth: useAuth,
+  navigate: useNavigate,
+  theme: useTheme
+}}>
+  <App />
+</HookInjectionProvider>
+```
+
+#### `useHookInjection(service, hookName, options?)`
+Hook that automatically injects a hook value into a service.
+
+```typescript
+useHookInjection(authService, 'auth', {
+  onReady: () => console.log('Auth service ready'),
+  onError: (error) => console.error('Injection failed', error)
+});
+```
 import { useHookInjection } from 'react-hook-injection-pattern';
 import { navigationService } from './services/navigationService';
 import { authenticateUser } from './services/authService';

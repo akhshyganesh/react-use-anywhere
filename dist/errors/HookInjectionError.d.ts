@@ -3,8 +3,8 @@
  */
 export declare class HookInjectionError extends Error {
     readonly code: string;
-    readonly details?: any;
-    constructor(message: string, code?: string, details?: any);
+    readonly details?: unknown;
+    constructor(message: string, code?: string, details?: unknown);
     /**
      * Create error for when hook is not set
      */

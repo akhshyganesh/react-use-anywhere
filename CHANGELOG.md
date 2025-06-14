@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-06-14
+
+### Added
+- 🚀 **Complete Router Independence**: Removed React Router DOM dependency
+- **Hook-Agnostic Design**: Now works with ANY React hooks, not just navigation
+- **Generic Hook Services**: Added `createHookService` for any hook type  
+- **Enhanced Provider**: Support for multiple hook types in `HookInjectionProvider`
+- **Modular Architecture**: Each service handles one specific concern
+- **Router Compatibility**: Works with React Router, TanStack Router, Next.js Router, or no router at all
+
+### Updated  
+- **Demo Application**: Now showcases multiple hook types (navigation, auth, theme) without React Router dependency
+- **Documentation**: Updated examples to show router-agnostic usage
+- **Package Keywords**: Added router-agnostic, hook-agnostic, and framework-specific terms
+- **Type Definitions**: Enhanced interfaces for better generic hook support
+
+### Breaking Changes
+- 📦 **Removed React Router DOM dependency**: The library no longer depends on any specific router
+- 🔧 **Updated Provider API**: `HookInjectionProvider` now uses `hooks` prop instead of just `navigationHook`
+
+### Migration Guide
+```typescript
+// Old (v1.0.0) - Router specific
+<HookInjectionProvider navigationHook={useNavigate}>
+  <App />
+</HookInjectionProvider>
+
+// New (v1.1.0) - Router agnostic  
+<HookInjectionProvider hooks={{ 
+  navigation: useNavigate, // or useRouter, or any navigation hook
+  auth: useAuth,
+  theme: useTheme 
+}}>
+  <App />
+</HookInjectionProvider>
+```
+
+### Benefits
+- ✅ **Universal Compatibility**: Works with any React router or no router at all
+- ✅ **Reduced Bundle Size**: No unnecessary router dependencies  
+- ✅ **Greater Flexibility**: Use any hooks in non-React files
+- ✅ **Future Proof**: Independent of router library versions and changes
+
 ## [1.0.0] - 2025-06-14
 
 ### Added
