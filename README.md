@@ -226,7 +226,7 @@ useHookInjection(authService, 'auth', {
   onReady: () => console.log('Auth service ready'),
   onError: (error) => console.error('Injection failed', error)
 });
-```
+
 import { useHookInjection } from 'react-use-anywhere';
 import { navigationService } from './services/navigationService';
 import { authenticateUser } from './services/authService';
@@ -636,7 +636,6 @@ MIT © [akhshyganesh](https://github.com/akhshyganesh)
 
 - Inspired by dependency injection patterns in Angular and other frameworks
 - Built with modern React patterns and best practices
-- Thanks to the React community for feedback and contributions
 
 ---
 
@@ -644,3 +643,4 @@ MIT © [akhshyganesh](https://github.com/akhshyganesh)
 - Use dependency injection to provide hook functionality to services
 - Services remain framework-agnostic and easier to test
 - Singleton pattern ensures the service is available throughout the application
+- 
