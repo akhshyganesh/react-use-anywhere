@@ -11,7 +11,7 @@ import {
   createHookService, 
   useHookInjection, 
   useHookFromContext 
-} from 'react-hook-injection-pattern';
+} from 'react-use-anywhere';
 
 // =============================================================================
 // 1. ROUTER-AGNOSTIC EXAMPLES
