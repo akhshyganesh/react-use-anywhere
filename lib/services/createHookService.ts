@@ -11,7 +11,6 @@ export function createHookService<T = any>(
   const {
     enableWarnings = true,
     fallbackBehavior = 'warn',
-    timeout = 5000, // eslint-disable-line @typescript-eslint/no-unused-vars
     initialValue = null,
     validator,
   } = options;
