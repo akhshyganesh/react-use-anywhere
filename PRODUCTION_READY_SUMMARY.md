@@ -71,7 +71,7 @@ interface NavigationServiceInterface {
 
 ## 📦 Package Information
 
-- **Name**: `react-hook-injection-pattern`
+- **Name**: `react-use-anywhere`
 - **Version**: `1.0.0`
 - **Size**: ~28KB (ES) / ~18KB (CJS) - optimized and tree-shakeable
 - **Dependencies**: Zero runtime dependencies

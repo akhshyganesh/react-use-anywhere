@@ -2,7 +2,7 @@
 
 ## 🎯 Universal React Support
 
-The `react-hook-injection-pattern` library is designed to work with **ALL React versions that support hooks** and beyond. Here's the comprehensive compatibility matrix:
+The `react-use-anywhere` library is designed to work with **ALL React versions that support hooks** and beyond. Here's the comprehensive compatibility matrix:
 
 ## ✅ Supported React Versions
 
@@ -52,7 +52,7 @@ import { ReactNode } from 'react';
 ```tsx
 import React from 'react';
 import { BrowserRouter, useHistory } from 'react-router-dom';
-import { HookInjectionProvider } from 'react-hook-injection-pattern';
+import { HookInjectionProvider } from 'react-use-anywhere';
 
 function App() {
   const history = useHistory();
@@ -75,7 +75,7 @@ export default () => (
 ```tsx
 import React from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
-import { HookInjectionProvider } from 'react-hook-injection-pattern';
+import { HookInjectionProvider } from 'react-use-anywhere';
 
 function App() {
   return (
@@ -97,7 +97,7 @@ export default () => (
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
-import { HookInjectionProvider } from 'react-hook-injection-pattern';
+import { HookInjectionProvider } from 'react-use-anywhere';
 
 function App() {
   return (
@@ -122,7 +122,7 @@ root.render(
 // pages/_app.tsx
 import { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
-import { HookInjectionProvider } from 'react-hook-injection-pattern';
+import { HookInjectionProvider } from 'react-use-anywhere';
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -141,13 +141,13 @@ export default MyApp;
 
 ### For React 16.8+
 ```bash
-npm install react-hook-injection-pattern
+npm install react-use-anywhere
 # Peer dependencies automatically resolved
 ```
 
 ### For TypeScript Projects
 ```bash
-npm install react-hook-injection-pattern
+npm install react-use-anywhere
 npm install --save-dev @types/react @types/react-dom
 ```
 
@@ -183,7 +183,7 @@ npm test -- --testNamePattern="React Version Compatibility"
 You can verify compatibility in your project:
 
 ```typescript
-import { createNavigationService } from 'react-hook-injection-pattern';
+import { createNavigationService } from 'react-use-anywhere';
 
 // This should work in any React version with hooks
 const service = createNavigationService();

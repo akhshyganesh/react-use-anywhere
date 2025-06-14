@@ -2,11 +2,27 @@
 export { HookInjectionProvider } from './provider/HookInjectionProvider';
 export { 
   useHookInjection, 
-  useNavigationFromContext, 
-  useCustomHook, 
+  useHookFromContext,
+  useNavigationInjection, // Legacy
+  useNavigationFromContext, // Legacy
+  useCustomHook, // Legacy
   useAllInjectedHooks 
 } from './hooks/useHookInjection';
+
+// Generic hook services
+export { 
+  createHookService,
+  createHookServiceWithTimeout,
+  createSingletonHookService,
+  getSingletonHookService,
+  resetSingletonHookService,
+  resetAllSingletonHookServices
+} from './services/createHookService';
+
+// Generic hook injection service
 export { createHookInjectionService } from './services/createHookInjectionService';
+
+// Legacy navigation services (for backwards compatibility)
 export { NavigationService } from './services/NavigationService';
 export { 
   createNavigationService, 
@@ -18,7 +34,13 @@ export {
 // Types
 export type {
   HookInjectionContext,
+  HookFunction,
+  ReactHook,
+  HookServiceInterface,
+  HookServiceOptions,
+  // Legacy types
   NavigationHook,
+  NavigationFunction,
   HookInjectionProviderProps,
   NavigationServiceInterface,
   HookInjectionServiceInterface,

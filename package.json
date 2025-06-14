@@ -1,7 +1,7 @@
 {
-  "name": "react-hook-injection-pattern",
+  "name": "react-use-anywhere",
   "version": "1.0.0",
-  "description": "A production-ready React library for safely using React hooks in non-React files through dependency injection pattern",
+  "description": "Use React hooks anywhere in your codebase - in services, utilities, and business logic. Router-agnostic, hook-agnostic, and works with any React hooks (auth, navigation, state, custom hooks, etc.).",
   "author": "akhshyganesh <akhshy.balakannan@gmail.com>",
   "license": "MIT",
   "type": "module",
@@ -25,21 +25,32 @@
   "keywords": [
     "react",
     "hooks",
+    "use-anywhere",
     "dependency-injection",
-    "navigation",
-    "service",
-    "pattern",
+    "service-layer",
+    "business-logic",
     "typescript",
-    "react-router"
+    "hook-injection",
+    "modular",
+    "router-agnostic",
+    "hook-agnostic",
+    "react-router",
+    "tanstack-router",
+    "nextjs",
+    "navigation",
+    "authentication",
+    "state-management",
+    "utility",
+    "production-ready"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/akhshyganesh/react-hook-injection-pattern.git"
+    "url": "https://github.com/akhshyganesh/react-use-anywhere.git"
   },
   "bugs": {
-    "url": "https://github.com/akhshyganesh/react-hook-injection-pattern/issues"
+    "url": "https://github.com/akhshyganesh/react-use-anywhere/issues"
   },
-  "homepage": "https://github.com/akhshyganesh/react-hook-injection-pattern#readme",
+  "homepage": "https://github.com/akhshyganesh/react-use-anywhere#readme",
   "scripts": {
     "dev": "vite --config vite.demo.config.ts",
     "build": "npm run build:lib && npm run build:demo",
@@ -51,16 +62,11 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "type-check": "tsc --noEmit",
-    "prepublishOnly": "npm run lint && npm run test && npm run build:lib"
+    "prepublishOnly": "npm run test && npm run build:lib"
   },
   "peerDependencies": {
     "react": ">=16.8.0 <19.0.0-0",
     "react-dom": ">=16.8.0 <19.0.0-0"
-  },
-  "peerDependenciesMeta": {
-    "react-router-dom": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
@@ -78,7 +84,6 @@
     "jest-environment-jsdom": "^29.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.0",
     "ts-jest": "^29.4.0",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",

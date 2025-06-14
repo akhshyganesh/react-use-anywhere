@@ -11,17 +11,46 @@ const HookInjectionContextValue = createContext<HookInjectionContext | null>(nul
  */
 export const HookInjectionProvider: React.FC<HookInjectionProviderProps> = ({
   children,
-  navigationHook,
-  customHooks = {},
+  hooks = {},
+  navigationHook, // Legacy support
+  customHooks = {}, // Legacy support
 }) => {
-  // Get the navigation function if navigationHook is provided
-  const navigate = navigationHook?.();
+  // Build the context value from the new hooks prop
+  const hookValues = useMemo(() => {
+    const values: Record<string, any> = {};
+    
+    // Process the new hooks prop
+    Object.entries(hooks).forEach(([name, hook]) => {
+      try {
+        values[name] = hook();
+      } catch (error) {
+        console.warn(`Failed to call hook "${name}":`, error);
+      }
+    });
+    
+    return values;
+  }, [hooks]);
+
+  // Legacy support: Get the navigation function if navigationHook is provided
+  const navigate = useMemo(() => {
+    if (navigationHook) {
+      try {
+        return navigationHook();
+      } catch (error) {
+        console.warn('Failed to call navigationHook:', error);
+        return undefined;
+      }
+    }
+    return undefined;
+  }, [navigationHook]);
 
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo((): HookInjectionContext => ({
-    navigate,
+    ...hookValues,
+    // Legacy support
+    ...(navigate && { navigate }),
     ...customHooks,
-  }), [navigate, customHooks]);
+  }), [hookValues, navigate, customHooks]);
 
   return (
     <HookInjectionContextValue.Provider value={contextValue}>
