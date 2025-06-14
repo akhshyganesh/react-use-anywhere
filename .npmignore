@@ -1,0 +1,37 @@
+# Source files (only dist should be published)
+lib/
+demo/
+examples/
+test/
+docs/
+
+# Development files
+.vscode/
+.idea/
+*.log
+*.tgz
+.DS_Store
+Thumbs.db
+
+# Configuration files
+vite.*.config.ts
+tsconfig.*.json
+jest.config.json
+.eslintrc.*
+.prettierrc.*
+.gitignore
+
+# Build artifacts (except dist)
+node_modules/
+coverage/
+dist-demo/
+*.local
+
+# Documentation (except main README)
+CONTRIBUTING.md
+CHANGELOG.md
+
+# CI/CD
+.github/
+.travis.yml
+.circleci/
