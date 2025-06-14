@@ -1,6 +1,6 @@
 {
   "name": "react-use-anywhere",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Use React hooks anywhere in your codebase - in services, utilities, and business logic. Router-agnostic, hook-agnostic, and works with any React hooks (auth, navigation, state, custom hooks, etc.).",
   "author": "akhshyganesh <akhshy.balakannan@gmail.com>",
   "license": "MIT",
@@ -92,7 +92,9 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": ["<rootDir>/test/setup.ts"],
+    "setupFilesAfterEnv": [
+      "<rootDir>/test/setup.ts"
+    ],
     "testMatch": [
       "<rootDir>/test/**/*.{test,spec}.{ts,tsx}"
     ],
