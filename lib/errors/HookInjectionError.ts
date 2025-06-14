@@ -3,9 +3,9 @@
  */
 export class HookInjectionError extends Error {
   public readonly code: string;
-  public readonly details?: any;
+  public readonly details?: unknown;
 
-  constructor(message: string, code = 'HOOK_INJECTION_ERROR', details?: any) {
+  constructor(message: string, code = 'HOOK_INJECTION_ERROR', details?: unknown) {
     super(message);
     this.name = 'HookInjectionError';
     this.code = code;
