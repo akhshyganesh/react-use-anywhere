@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { HookProvider } from '../lib';
 import { Home } from './components/Home';
 import { Login } from './components/Login';
-import './App.css';
+import './assets/App.css';
 
 // Simple navigation hook for the demo
 const useNavigation = () => {

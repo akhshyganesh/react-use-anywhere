@@ -44,7 +44,7 @@ export const Home: React.FC = () => {
       padding: '2rem',
       transition: 'all 0.3s ease'
     }}>
-      <h1>🚀 React Use Anywhere - Demo</h1>
+      <h1>React Use Anywhere - Demo</h1>
       <p>Use React hooks anywhere in your codebase - even in plain JavaScript/TypeScript files!</p>
       
       <div style={{ marginBottom: '2rem' }}>
@@ -85,7 +85,7 @@ export const Home: React.FC = () => {
 
       <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: theme?.isDark ? '#444' : '#f5f5f5', borderRadius: '8px' }}>
         <h3>✨ How it works:</h3>
-        <ol>
+        <ol style={{ textAlign: 'start' }}>
           <li><strong>Wrap your app</strong> with <code>HookProvider</code> and pass your hooks</li>
           <li><strong>Create services</strong> using <code>createSingletonService()</code></li>
           <li><strong>Connect services</strong> using <code>useHookService()</code> in React components</li>
