@@ -396,7 +396,31 @@ export const themeService = createSingletonService('theme');
 export const getAuthService = () => createHookService();
 ```
 
+**Why use singletons?**
+
+- **State consistency**: All components share the same state instance, ensuring data synchronization across your app
+- **Performance**: Avoids creating multiple service instances, reducing memory usage and preventing unnecessary re-renders
+- **Predictable behavior**: State updates in one component are immediately reflected in all other components using the same service
+- **Memory efficiency**: One instance per service type instead of potentially dozens of instances
+
+**What happens without singletons?**
+```typescript
+// This creates a NEW service instance every time it's called
+const Component1 = () => {
+  const auth = getAuthService(); // Instance A
+  // ...
+};
+
+const Component2 = () => {
+  const auth = getAuthService(); // Instance B (different from A!)
+  // Changes in Component1 won't be seen in Component2
+};
+```
+
+With singletons, both components share the same instance and state.
+
 ### 2. Define Clear Hook Types
+
 ```tsx
 // ✅ Good - clear TypeScript types
 type AuthHook = {
@@ -505,4 +529,4 @@ const result = myService.use((hookValue) => {
 
 ## 📄 License
 
-MIT © [akhshyganesh](https://github.com/akhshyganesh) 
+MIT © [akhshyganesh](https://github.com/akhshyganesh)
