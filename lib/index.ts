@@ -1,61 +1,16 @@
-// Main library exports
-export { HookInjectionProvider } from './provider/HookInjectionProvider';
-export { 
-  useHookInjection, 
-  useHookFromContext,
-  useNavigationInjection, // Legacy
-  useNavigationFromContext, // Legacy
-  useCustomHook, // Legacy
-  useAllInjectedHooks 
-} from './hooks/useHookInjection';
+// Provider component to wrap your app
+export { HookProvider, useHookContext } from './providers/HookInjectionProvider';
 
-// Generic hook services
+// Create services to use hooks anywhere
 export { 
-  createHookService,
-  createHookServiceWithTimeout,
-  createSingletonHookService,
-  getSingletonHookService,
-  resetSingletonHookService,
-  resetAllSingletonHookServices
+  createHookService, 
+  createSingletonService, 
+  getSingletonService, 
+  resetAllServices 
 } from './services/createHookService';
 
-// Generic hook injection service
-export { createHookInjectionService } from './services/createHookInjectionService';
-
-// Legacy navigation services (for backwards compatibility)
-export { NavigationService } from './services/NavigationService';
-export { 
-  createNavigationService, 
-  createSingletonNavigationService,
-  getSingletonNavigationService,
-  resetSingletonNavigationService 
-} from './services/createNavigationService';
+// Connect services to hooks in React components
+export { useHookService, useHook, useAllHooks } from './hooks/useHookService';
 
 // Types
-export type {
-  HookInjectionContext,
-  HookFunction,
-  ReactHook,
-  HookServiceInterface,
-  HookServiceOptions,
-  // Legacy types
-  NavigationHook,
-  NavigationFunction,
-  HookInjectionProviderProps,
-  NavigationServiceInterface,
-  HookInjectionServiceInterface,
-} from './types';
-
-// Utilities
-export { withHookInjection } from './hoc/withHookInjection';
-export { HookInjectionError } from './errors/HookInjectionError';
-
-// Version compatibility utilities
-export {
-  isReactVersionSupported,
-  checkReactVersion,
-  getReactVersion,
-  getCompatibilityInfo,
-  logCompatibilityInfo,
-  assertReactCompatibility,
-} from './utils/reactVersionCheck';
+export type { HookService, HookContext, HookProviderProps, ReactHook } from './types';

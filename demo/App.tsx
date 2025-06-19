@@ -1,83 +1,75 @@
-import React, { useState, useMemo } from 'react';
-import { HookInjectionProvider } from '../lib';
+import React, { useState } from 'react';
+import { HookProvider } from '../lib';
 import { Home } from './components/Home';
 import { Login } from './components/Login';
 import './App.css';
 
-// Custom navigation hook that works without React Router
-const useSimpleNavigation = () => {
-  return (path: string, options?: any) => {
-    console.log(`Navigation called: ${path}`, options);
-    // Simple hash-based navigation for demo purposes
+// Simple navigation hook for the demo
+const useNavigation = () => {
+  return (path: string) => {
+    console.log(`Navigating to: ${path}`);
     window.location.hash = path;
   };
 };
 
-// Custom authentication hook for demonstration
+// Simple auth hook for the demo
 const useAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   
   return {
-    isAuthenticated,
     user,
-    login: (username: string) => {
-      setIsAuthenticated(true);
-      setUser(username);
+    isAuthenticated: !!user,
+    login: (name: string, email: string) => {
+      setUser({ name, email });
+      console.log('User logged in:', { name, email });
     },
     logout: () => {
-      setIsAuthenticated(false);
       setUser(null);
+      console.log('User logged out');
     }
   };
 };
 
-// Custom theme hook for demonstration
+// Simple theme hook for the demo
 const useTheme = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
   return {
     theme,
-    toggleTheme: () => setTheme(prev => prev === 'light' ? 'dark' : 'light'),
-    isDark: theme === 'dark'
+    isDark: theme === 'dark',
+    toggle: () => {
+      const newTheme = theme === 'light' ? 'dark' : 'light';
+      setTheme(newTheme);
+      console.log('Theme changed to:', newTheme);
+    }
   };
 };
 
 const App: React.FC = () => {
-  const [currentRoute, setCurrentRoute] = useState('/');
+  const [currentPage, setCurrentPage] = useState('/');
 
-  // Listen to hash changes for simple routing
+  // Simple hash-based routing for the demo
   React.useEffect(() => {
     const handleHashChange = () => {
-      setCurrentRoute(window.location.hash.slice(1) || '/');
+      setCurrentPage(window.location.hash.slice(1) || '/');
     };
     
     window.addEventListener('hashchange', handleHashChange);
-    handleHashChange(); // Set initial route
+    handleHashChange();
     
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Memoize hooks to prevent unnecessary re-renders
-  const hooks = useMemo(() => ({
-    navigation: useSimpleNavigation,
-    auth: useAuth,
-    theme: useTheme,
-  }), []);
-
-  const renderCurrentRoute = () => {
-    switch (currentRoute) {
-      case '/login':
-        return <Login />;
-      default:
-        return <Home />;
-    }
-  };
-
   return (
-    <HookInjectionProvider hooks={hooks}>
-      {renderCurrentRoute()}
-    </HookInjectionProvider>
+    <HookProvider
+      hooks={{
+        navigation: useNavigation,
+        auth: useAuth,
+        theme: useTheme,
+      }}
+    >
+      {currentPage === '/login' ? <Login /> : <Home />}
+    </HookProvider>
   );
 };
 

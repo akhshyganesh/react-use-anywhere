@@ -1,27 +1,13 @@
-import { createSingletonNavigationService, createHookService } from '../../lib';
+import { createSingletonService } from '../../lib';
 
-// Create a navigation service instance  
-export const navigationService = createSingletonNavigationService({
-  enableWarnings: true,
-  fallbackBehavior: 'warn',
-});
+// Create a service to use navigation hook anywhere
+export const navigationService = createSingletonService<(path: string) => void>('navigation');
 
-// Create an auth service for the demo
-export const authService = createHookService<{
-  user: string | null;
-  isAuthenticated: boolean;
-  login: (username: string) => void;
-  logout: () => void;
-}>({
-  enableWarnings: true,
-  fallbackBehavior: 'warn',
-});
-
-// Convenience functions using the service methods
-export const navigateToLogin = () => {
-  navigationService.navigateToLogin?.('/login');
+// Helper functions you can use in any file
+export const goToLogin = () => {
+  navigationService.use((navigate) => navigate('/login'));
 };
 
-export const navigateToHome = () => {
-  navigationService.navigateToHome?.('/');
+export const goToHome = () => {
+  navigationService.use((navigate) => navigate('/'));
 };
