@@ -1,168 +1,230 @@
 # Theme Management
 
-Learn how to implement a theme management system using react-use-anywhere.
+Learn how to implement a theme management hook using react-use-anywhere.
 
 ## Overview
 
-This example demonstrates how to create a theme service that can be accessed from anywhere in your application, including non-React contexts.
+This example demonstrates how to create a theme hook that can be accessed from anywhere in your application through services.
 
 ## Implementation
 
-### 1. Create the Theme Service
+### 1. Create the Theme Hook
 
 ```typescript
-// services/themeService.ts
+// hooks/useTheme.ts
+import { useState, useEffect, useCallback } from 'react';
+
 export type Theme = 'light' | 'dark' | 'system';
 
-export interface ThemeService {
-  currentTheme: Theme;
+export interface ThemeState {
+  theme: Theme;
+  isDark: boolean;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
-  isDark: boolean;
   getSystemTheme: () => 'light' | 'dark';
 }
 
-export const createThemeService = (): ThemeService => {
-  let currentTheme: Theme = 'system';
-  let listeners: Array<() => void> = [];
-
-  const getSystemTheme = (): 'light' | 'dark' => {
+export const useTheme = (): ThemeState => {
+  const getSystemTheme = useCallback((): 'light' | 'dark' => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
       : 'light';
-  };
+  }, []);
 
-  const resolveTheme = (): 'light' | 'dark' => {
-    if (currentTheme === 'system') {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const saved = localStorage.getItem('theme') as Theme | null;
+    return saved || 'system';
+  });
+
+  const resolveTheme = useCallback((): 'light' | 'dark' => {
+    if (theme === 'system') {
       return getSystemTheme();
     }
-    return currentTheme as 'light' | 'dark';
-  };
+    return theme as 'light' | 'dark';
+  }, [theme, getSystemTheme]);
 
-  const notifyListeners = () => {
-    listeners.forEach((listener) => listener());
-  };
+  const isDark = resolveTheme() === 'dark';
 
-  const setTheme = (theme: Theme) => {
-    currentTheme = theme;
+  const setTheme = useCallback(
+    (newTheme: Theme) => {
+      setThemeState(newTheme);
 
-    // Apply theme to document
+      // Apply theme to document
+      const resolvedTheme = newTheme === 'system' ? getSystemTheme() : newTheme;
+      document.documentElement.setAttribute('data-theme', resolvedTheme);
+      document.documentElement.classList.toggle(
+        'dark',
+        resolvedTheme === 'dark'
+      );
+
+      // Store in localStorage
+      localStorage.setItem('theme', newTheme);
+    },
+    [getSystemTheme]
+  );
+
+  const toggleTheme = useCallback(() => {
+    const resolved = resolveTheme();
+    setTheme(resolved === 'light' ? 'dark' : 'light');
+  }, [resolveTheme, setTheme]);
+
+  // Apply theme on mount and theme changes
+  useEffect(() => {
     const resolvedTheme = resolveTheme();
     document.documentElement.setAttribute('data-theme', resolvedTheme);
     document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
-
-    // Store in localStorage
-    localStorage.setItem('theme', theme);
-
-    notifyListeners();
-  };
-
-  const toggleTheme = () => {
-    const resolved = resolveTheme();
-    setTheme(resolved === 'light' ? 'dark' : 'light');
-  };
-
-  // Initialize theme from localStorage or system preference
-  const savedTheme = localStorage.getItem('theme') as Theme | null;
-  if (savedTheme) {
-    setTheme(savedTheme);
-  } else {
-    setTheme('system');
-  }
+  }, [resolveTheme]);
 
   // Listen for system theme changes
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  mediaQuery.addEventListener('change', () => {
-    if (currentTheme === 'system') {
-      setTheme('system'); // Re-trigger to apply system theme
-    }
-  });
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      if (theme === 'system') {
+        const resolvedTheme = getSystemTheme();
+        document.documentElement.setAttribute('data-theme', resolvedTheme);
+        document.documentElement.classList.toggle(
+          'dark',
+          resolvedTheme === 'dark'
+        );
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [theme, getSystemTheme]);
 
   return {
-    get currentTheme() {
-      return currentTheme;
-    },
+    theme,
+    isDark,
     setTheme,
     toggleTheme,
-    get isDark() {
-      return resolveTheme() === 'dark';
-    },
     getSystemTheme,
   };
 };
 ```
 
-### 2. Register the Service
+### 2. Register the Hook with HookProvider
 
 ```typescript
 // App.tsx
-import { HookInjectionProvider, createHookService } from 'react-use-anywhere';
-import { createThemeService } from './services/themeService';
-
-const hookService = createHookService();
-
-// Register theme service
-hookService.register('theme', createThemeService());
+import { HookProvider } from 'react-use-anywhere';
+import { useTheme } from './hooks/useTheme';
 
 function App() {
   return (
-    <HookInjectionProvider service={hookService}>
+    <HookProvider
+      hooks={{
+        theme: useTheme,
+      }}
+    >
       <AppContent />
-    </HookInjectionProvider>
+    </HookProvider>
   );
 }
 ```
 
-### 3. Use in React Components
+### 3. Create Services to Use the Theme
+
+```typescript
+// services/themeService.ts
+import { createSingletonService } from 'react-use-anywhere';
+import type { ThemeState } from '../hooks/useTheme';
+
+// Create a singleton service to access the theme hook
+export const themeService = createSingletonService<ThemeState>('theme');
+
+// Helper functions that can be used anywhere in your app
+export const toggleTheme = () => {
+  return themeService.use((theme) => {
+    theme.toggleTheme();
+  });
+};
+
+export const setTheme = (newTheme: 'light' | 'dark' | 'system') => {
+  return themeService.use((theme) => {
+    theme.setTheme(newTheme);
+  });
+};
+
+export const getCurrentTheme = () => {
+  return themeService.use((theme) => theme.theme);
+};
+
+export const isDarkMode = () => {
+  return themeService.use((theme) => theme.isDark);
+};
+```
+
+### 4. Connect the Service in a React Component
+
+```typescript
+// components/ThemeProvider.tsx
+import React from 'react';
+import { useHookService } from 'react-use-anywhere';
+import { themeService } from '../services/themeService';
+
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Connect the service to the hook
+  useHookService(themeService, 'theme');
+
+  return <>{children}</>;
+};
+```
+
+### 5. Use in React Components
 
 ```typescript
 // components/ThemeToggle.tsx
-import { useHookService } from 'react-use-anywhere';
-import { ThemeService } from '../services/themeService';
+import React from 'react';
+import { useHook } from 'react-use-anywhere';
+import { toggleTheme, setTheme } from '../services/themeService';
+import type { ThemeState } from '../hooks/useTheme';
 
 export const ThemeToggle = () => {
-  const [themeService] = useHookService<ThemeService>('theme');
+  const theme = useHook<ThemeState>('theme');
+
+  if (!theme) return null;
 
   return (
     <div className="theme-toggle">
       <button
-        onClick={() => themeService.toggleTheme()}
+        onClick={toggleTheme}
         aria-label="Toggle theme"
       >
-        {themeService.isDark ? '🌙' : '☀️'}
+        {theme.isDark ? '🌙' : '☀️'}
       </button>
 
       <select
-        value={themeService.currentTheme}
-        onChange={(e) => themeService.setTheme(e.target.value as any)}
+        value={theme.theme}
+        onChange={(e) => setTheme(e.target.value as any)}
       >
         <option value="light">Light</option>
         <option value="dark">Dark</option>
         <option value="system">System</option>
       </select>
 
-      <span>Current: {themeService.isDark ? 'Dark' : 'Light'}</span>
+      <span>Current: {theme.isDark ? 'Dark' : 'Light'}</span>
     </div>
   );
 };
 ```
 
-### 4. Use in Non-React Code
+### 6. Use in Non-React Code
 
 ```typescript
 // utils/api.ts
-import { getHookService } from 'react-use-anywhere';
-import { ThemeService } from '../services/themeService';
+import { getCurrentTheme, isDarkMode } from '../services/themeService';
 
 export const apiClient = {
   async makeRequest(url: string) {
-    const hookService = getHookService();
-    const themeService = hookService.get<ThemeService>('theme');
+    const currentTheme = getCurrentTheme();
+    const isDark = isDarkMode();
 
     // Include theme preference in API requests
     const headers = {
       'Content-Type': 'application/json',
-      'X-Theme-Preference': themeService.currentTheme,
+      'X-Theme-Preference': currentTheme || 'system',
+      'X-Dark-Mode': isDark ? 'true' : 'false',
     };
 
     const response = await fetch(url, { headers });

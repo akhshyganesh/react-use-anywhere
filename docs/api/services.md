@@ -1,134 +1,294 @@
 # Services
 
-Functions for creating and managing service instances with hook access capabilities.
+Functions for creating and managing service instances that can access hook values.
 
 ## createHookService
 
-Creates a service instance with access to registered hooks.
+Creates a basic service instance that can hold hook values.
+
+⚠️ **Note**: Most applications should use `createSingletonService` instead for better performance and shared state.
 
 ### Signature
 
 ```typescript
-function createHookService<T = any>(
-  name: string,
-  serviceFactory: ServiceFactory<T>
-): T;
+function createHookService<T = unknown>(): HookService<T>;
 ```
-
-### Parameters
-
-| Parameter        | Type                | Required | Description                              |
-| ---------------- | ------------------- | -------- | ---------------------------------------- |
-| `name`           | `string`            | ✅       | Unique identifier for the service        |
-| `serviceFactory` | `ServiceFactory<T>` | ✅       | Function that returns the service object |
 
 ### Returns
 
-- `T` - The service instance with hook access capabilities
+- `HookService<T>` - A service instance with methods to access hook values
+
+### Service Methods
+
+| Method      | Description                           |
+| ----------- | ------------------------------------- |
+| `get()`     | Get the current hook value            |
+| `isReady()` | Check if hook value is available      |
+| `use(cb)`   | Use hook value in a callback function |
+| `_reset()`  | Reset service (internal, for testing) |
 
 ### Usage
 
 ```typescript
 import { createHookService } from 'react-use-anywhere';
 
-export const authService = createHookService('auth', () => ({
-  async login(credentials: LoginCredentials) {
-    const navigate = useHookService('navigation');
-    const { setUser } = useHookService('auth');
+// Create service
+export const authService = createHookService<AuthState>();
 
-    try {
-      const user = await api.login(credentials);
-      setUser(user);
-      navigate('/dashboard');
-      return user;
-    } catch (error) {
-      throw error;
-    }
-  },
+// Use service values
+export const getCurrentUser = () => {
+  return authService.use((auth) => {
+    return auth.user;
+  });
+};
 
-  logout() {
-    const navigate = useHookService('navigation');
-    const { clearUser } = useHookService('auth');
-
-    clearUser();
-    navigate('/login');
-  },
-}));
+export const isAuthenticated = () => {
+  return authService.use((auth) => {
+    return auth.isAuthenticated;
+  });
+};
 ```
 
-### Benefits
+```tsx
+// Connect service to hook in React component
+import { useHookService } from 'react-use-anywhere';
 
-- **Service Encapsulation** - Wraps service logic in a manageable instance
-- **Hook Access** - Service methods can access registered hooks
-- **Testability** - Easy to mock and test service behavior
-- **Reusability** - Service instances can be shared across components
+function MyComponent() {
+  // This connection is required!
+  useHookService(authService, 'auth');
+
+  return <div>My Component</div>;
+}
+```
 
 ## createSingletonService
 
-Creates a singleton service that persists across the application lifecycle.
+🚀 **RECOMMENDED**: Creates a singleton service that persists across the application lifecycle.
 
 ### Signature
 
 ```typescript
-function createSingletonService<T = any>(
-  name: string,
-  serviceFactory: ServiceFactory<T>
-): T;
+function createSingletonService<T = unknown>(hookName: string): HookService<T>;
 ```
 
 ### Parameters
 
-| Parameter        | Type                | Required | Description                                |
-| ---------------- | ------------------- | -------- | ------------------------------------------ |
-| `name`           | `string`            | ✅       | Unique identifier for the singleton        |
-| `serviceFactory` | `ServiceFactory<T>` | ✅       | Function that creates the service instance |
+| Parameter  | Type     | Required | Description                                    |
+| ---------- | -------- | -------- | ---------------------------------------------- |
+| `hookName` | `string` | ✅       | Name of the hook as registered in HookProvider |
 
 ### Returns
 
-- `T` - The singleton service instance
+- `HookService<T>` - A singleton service instance
 
 ### Usage
 
 ```typescript
 import { createSingletonService } from 'react-use-anywhere';
 
-export const cacheService = createSingletonService('cache', () => {
-  const cache = new Map();
+// Create singleton service for 'auth' hook
+export const authService = createSingletonService<AuthState>('auth');
 
-  return {
-    set(key: string, value: any, ttl?: number) {
-      cache.set(key, { value, timestamp: Date.now(), ttl });
-    },
+// Helper functions that use the service
+export const login = async (credentials: LoginCredentials) => {
+  return authService.use(async (auth) => {
+    try {
+      const user = await api.login(credentials);
+      auth.setUser(user);
+      return user;
+    } catch (error) {
+      throw error;
+    }
+  });
+};
 
-    get(key: string) {
-      const { addNotification } = useHookService('notifications');
-      const item = cache.get(key);
+export const logout = () => {
+  return authService.use((auth) => {
+    auth.clearUser();
+  });
+};
 
-      if (!item) return null;
-
-      // Check TTL
-      if (item.ttl && Date.now() - item.timestamp > item.ttl) {
-        cache.delete(key);
-        addNotification({ type: 'info', message: 'Cache expired' });
-        return null;
-      }
-
-      return item.value;
-    },
-
-    clear() {
-      cache.clear();
-    },
-  };
-});
+export const getCurrentUser = () => {
+  return authService.use((auth) => {
+    return auth.user;
+  });
+};
 ```
 
-### Singleton Behavior
+```tsx
+// Connect service to hook in React component
+import { useHookService } from 'react-use-anywhere';
 
-- **Single Instance** - Only one instance exists throughout the app
-- **Persistent State** - State is maintained across component renders
-- **Shared Access** - Same instance accessed from anywhere
-- **Memory Efficient** - Avoids creating duplicate instances
+function MyComponent() {
+  // This connection is required for the service to work!
+  useHookService(authService, 'auth');
+
+  // Now you can use service functions
+  const handleLogin = () => {
+    login({ email: 'user@example.com', password: 'password' });
+  };
+
+  return (
+    <div>
+      <button onClick={handleLogin}>Login</button>
+      <button onClick={logout}>Logout</button>
+    </div>
+  );
+}
+```
+
+### Benefits
+
+- **Shared State** - Same instance used throughout the app
+- **Better Performance** - No duplicate instances
+- **Automatic Validation** - Validates hook names at runtime
+- **Memory Efficient** - Singleton pattern prevents memory leaks
+
+# Services
+
+Functions for creating and managing service instances that can access hook values.
+
+## createHookService
+
+Creates a basic service instance that can hold hook values.
+
+⚠️ **Note**: Most applications should use `createSingletonService` instead for better performance and shared state.
+
+### Signature
+
+```typescript
+function createHookService<T = unknown>(): HookService<T>;
+```
+
+### Returns
+
+- `HookService<T>` - A service instance with methods to access hook values
+
+### Service Methods
+
+| Method      | Description                           |
+| ----------- | ------------------------------------- |
+| `get()`     | Get the current hook value            |
+| `isReady()` | Check if hook value is available      |
+| `use(cb)`   | Use hook value in a callback function |
+| `_reset()`  | Reset service (internal, for testing) |
+
+### Usage
+
+```typescript
+import { createHookService } from 'react-use-anywhere';
+
+// Create service
+export const authService = createHookService<AuthState>();
+
+// Use service values
+export const getCurrentUser = () => {
+  return authService.use((auth) => {
+    return auth.user;
+  });
+};
+
+export const isAuthenticated = () => {
+  return authService.use((auth) => {
+    return auth.isAuthenticated;
+  });
+};
+```
+
+```tsx
+// Connect service to hook in React component
+import { useHookService } from 'react-use-anywhere';
+
+function MyComponent() {
+  // This connection is required!
+  useHookService(authService, 'auth');
+
+  return <div>My Component</div>;
+}
+```
+
+## createSingletonService
+
+🚀 **RECOMMENDED**: Creates a singleton service that persists across the application lifecycle.
+
+### Signature
+
+```typescript
+function createSingletonService<T = unknown>(hookName: string): HookService<T>;
+```
+
+### Parameters
+
+| Parameter  | Type     | Required | Description                                    |
+| ---------- | -------- | -------- | ---------------------------------------------- |
+| `hookName` | `string` | ✅       | Name of the hook as registered in HookProvider |
+
+### Returns
+
+- `HookService<T>` - A singleton service instance
+
+### Usage
+
+```typescript
+import { createSingletonService } from 'react-use-anywhere';
+
+// Create singleton service for 'auth' hook
+export const authService = createSingletonService<AuthState>('auth');
+
+// Helper functions that use the service
+export const login = async (credentials: LoginCredentials) => {
+  return authService.use(async (auth) => {
+    try {
+      const user = await api.login(credentials);
+      auth.setUser(user);
+      return user;
+    } catch (error) {
+      throw error;
+    }
+  });
+};
+
+export const logout = () => {
+  return authService.use((auth) => {
+    auth.clearUser();
+  });
+};
+
+export const getCurrentUser = () => {
+  return authService.use((auth) => {
+    return auth.user;
+  });
+};
+```
+
+```tsx
+// Connect service to hook in React component
+import { useHookService } from 'react-use-anywhere';
+
+function MyComponent() {
+  // This connection is required for the service to work!
+  useHookService(authService, 'auth');
+
+  // Now you can use service functions
+  const handleLogin = () => {
+    login({ email: 'user@example.com', password: 'password' });
+  };
+
+  return (
+    <div>
+      <button onClick={handleLogin}>Login</button>
+      <button onClick={logout}>Logout</button>
+    </div>
+  );
+}
+```
+
+### Benefits
+
+- **Shared State** - Same instance used throughout the app
+- **Better Performance** - No duplicate instances
+- **Automatic Validation** - Validates hook names at runtime
+- **Memory Efficient** - Singleton pattern prevents memory leaks
 
 ## getSingletonService
 
@@ -137,18 +297,20 @@ Retrieves an existing singleton service by name.
 ### Signature
 
 ```typescript
-function getSingletonService<T = any>(name: string): T | null;
+function getSingletonService<T = unknown>(
+  hookName: string
+): HookService<T> | null;
 ```
 
 ### Parameters
 
-| Parameter | Type     | Required | Description                               |
-| --------- | -------- | -------- | ----------------------------------------- |
-| `name`    | `string` | ✅       | Name of the singleton service to retrieve |
+| Parameter  | Type     | Required | Description                                |
+| ---------- | -------- | -------- | ------------------------------------------ |
+| `hookName` | `string` | ✅       | Name of the hook as registered in provider |
 
 ### Returns
 
-- `T | null` - The singleton instance or null if not found
+- `HookService<T> | null` - The singleton instance or null if not found
 
 ### Usage
 
@@ -156,33 +318,178 @@ function getSingletonService<T = any>(name: string): T | null;
 import { getSingletonService } from 'react-use-anywhere';
 
 // Get existing singleton
-const cacheService = getSingletonService('cache');
+const authService = getSingletonService<AuthState>('auth');
 
-if (cacheService) {
-  const data = cacheService.get('user-data');
+if (authService) {
+  const user = authService.use((auth) => auth.user);
 }
-
-// Or with type safety
-const typedCacheService = getSingletonService<CacheService>('cache');
 ```
 
 ## createTypedSingletonService
 
-Type-safe version of createSingletonService with compile-time type checking.
+Type-safe version of createSingletonService with compile-time hook name validation.
 
 ### Signature
 
 ```typescript
-function createTypedSingletonService<T, S = any>(
-  name: string,
-  serviceFactory: TypedServiceFactory<T, S>
-): S;
+function createTypedSingletonService<
+  THooks extends Record<string, ReactHook<unknown>>,
+  K extends keyof THooks,
+>(hookName: K): HookService<ExtractHookType<THooks[K]>>;
 ```
 
 ### Type Parameters
 
-- `T` - The hook registry interface type
-- `S` - The service type
+- `THooks` - The hooks interface type
+- `K` - The specific hook name key
+
+### Usage
+
+```typescript
+import { createTypedSingletonService } from 'react-use-anywhere';
+
+// Define your hooks type
+type AppHooks = {
+  auth: () => AuthState;
+  navigation: () => NavigateFunction;
+};
+
+// Create typed service - TypeScript will validate hook names
+export const authService = createTypedSingletonService<AppHooks, 'auth'>(
+  'auth'
+);
+
+// TypeScript error if hook name is invalid
+export const badService = createTypedSingletonService<AppHooks, 'invalid'>(
+  'invalid'
+); // ❌ Error
+```
+
+## createStrictSingletonService
+
+Strict type-safe version that enforces valid hook names at compile time.
+
+### Signature
+
+```typescript
+function createStrictSingletonService<
+  THooks extends Record<string, ReactHook<unknown>>,
+>(
+  hookName: keyof THooks & string
+): HookService<ExtractHookType<THooks[typeof hookName]>>;
+```
+
+### Usage
+
+```typescript
+import { createStrictSingletonService } from 'react-use-anywhere';
+
+// Define your hooks
+type MyHooks = {
+  auth: () => AuthState;
+  theme: () => ThemeState;
+};
+
+// Create strict service - compile-time validation
+export const authService = createStrictSingletonService<MyHooks>('auth'); // ✅ Valid
+export const themeService = createStrictSingletonService<MyHooks>('theme'); // ✅ Valid
+export const invalidService = createStrictSingletonService<MyHooks>('invalid'); // ❌ TypeScript Error
+```
+
+## createInferredSingletonService
+
+Automatically infers types from the HookProvider setup.
+
+### Signature
+
+```typescript
+function createInferredSingletonService<
+  THooks extends Record<string, ReactHook<unknown>>,
+  K extends keyof THooks,
+>(hookName: K): TypedHookService<ExtractHookType<THooks[K]>, THooks>;
+```
+
+### Usage
+
+```typescript
+import { createInferredSingletonService } from 'react-use-anywhere';
+
+// Service automatically gets proper typing from provider
+export const authService = createInferredSingletonService<AppHooks, 'auth'>(
+  'auth'
+);
+```
+
+## resetAllServices
+
+Resets all singleton services. Useful for testing.
+
+### Signature
+
+```typescript
+function resetAllServices(): void;
+```
+
+### Usage
+
+```typescript
+import { resetAllServices } from 'react-use-anywhere';
+
+// In tests
+beforeEach(() => {
+  resetAllServices();
+});
+```
+
+## Service Usage Pattern
+
+Here's the complete pattern for using services:
+
+```typescript
+// 1. Create service (in service file)
+import { createSingletonService } from 'react-use-anywhere';
+
+export const authService = createSingletonService<AuthState>('auth');
+
+export const login = (credentials: LoginCredentials) => {
+  return authService.use((auth) => {
+    auth.login(credentials.email, credentials.password);
+  });
+};
+
+// 2. Connect service (in React component)
+import { useHookService } from 'react-use-anywhere';
+import { authService, login } from '../services/authService';
+
+function LoginComponent() {
+  useHookService(authService, 'auth'); // Required connection
+
+  const handleLogin = () => {
+    login({ email: 'test@example.com', password: 'password' });
+  };
+
+  return <button onClick={handleLogin}>Login</button>;
+}
+
+// 3. Setup provider (in App)
+import { HookProvider } from 'react-use-anywhere';
+
+function App() {
+  return (
+    <HookProvider hooks={{ auth: useAuth }}>
+      <LoginComponent />
+    </HookProvider>
+  );
+}
+```
+
+## Key Points
+
+- **Services are created once** - Use `createSingletonService` for shared state
+- **Services must be connected** - Use `useHookService` in React components
+- **Access values with `.use()`** - Services use the `.use(callback)` method
+- **Runtime validation** - Hook names are validated at runtime
+- **Type-safe variants** - Use typed versions for compile-time checking
 
 ### Parameters
 

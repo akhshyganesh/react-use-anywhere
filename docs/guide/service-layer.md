@@ -56,47 +56,66 @@ Organize services by business domain:
 
 ```typescript
 // services/user/userService.ts
-import { useHookService } from 'react-use-anywhere';
+import { createSingletonService } from 'react-use-anywhere';
+
+const navigationService = createSingletonService('navigate');
+const notificationService = createSingletonService('notifications');
+const authService = createSingletonService('auth');
 
 export const userService = {
   async createUser(userData: CreateUserRequest) {
-    const navigate = useHookService('navigation');
-    const { addNotification } = useHookService('notifications');
-
     try {
       const user = await apiService.post('/users', userData);
-      addNotification({
-        type: 'success',
-        message: 'User created successfully',
+
+      notificationService.use((notifications) => {
+        notifications.addNotification({
+          type: 'success',
+          message: 'User created successfully',
+        });
       });
-      navigate(`/users/${user.id}`);
+
+      navigationService.use((navigate) => {
+        navigate(`/users/${user.id}`);
+      });
+
       return user;
     } catch (error) {
-      addNotification({ type: 'error', message: 'Failed to create user' });
+      notificationService.use((notifications) => {
+        notifications.addNotification({
+          type: 'error',
+          message: 'Failed to create user',
+        });
+      });
       throw error;
     }
   },
 
   async updateUser(userId: string, updates: UpdateUserRequest) {
-    const { addNotification } = useHookService('notifications');
-    const { setUser } = useHookService('auth');
-
     try {
       const user = await apiService.put(`/users/${userId}`, updates);
 
       // Update current user if editing own profile
-      const { user: currentUser } = useHookService('auth');
-      if (currentUser?.id === userId) {
-        setUser(user);
-      }
-
-      addNotification({
-        type: 'success',
-        message: 'User updated successfully',
+      authService.use((auth) => {
+        if (auth.user?.id === userId) {
+          auth.setUser(user);
+        }
       });
+
+      notificationService.use((notifications) => {
+        notifications.addNotification({
+          type: 'success',
+          message: 'User updated successfully',
+        });
+      });
+
       return user;
     } catch (error) {
-      addNotification({ type: 'error', message: 'Failed to update user' });
+      notificationService.use((notifications) => {
+        notifications.addNotification({
+          type: 'error',
+          message: 'Failed to update user',
+        });
+      });
       throw error;
     }
   },

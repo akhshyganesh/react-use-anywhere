@@ -4,7 +4,7 @@ Components that make React hooks available throughout your application.
 
 ## HookProvider
 
-The basic provider component that registers hooks for use in services.
+The basic provider component that registers hooks for use throughout your app.
 
 ### Usage
 
@@ -29,25 +29,35 @@ function App() {
 
 ### Props
 
-| Prop       | Type                        | Required | Description                                |
-| ---------- | --------------------------- | -------- | ------------------------------------------ |
-| `hooks`    | `Record<string, ReactHook>` | ✅       | Object mapping hook keys to hook functions |
-| `children` | `ReactNode`                 | ✅       | Child components that can access the hooks |
+| Prop       | Type                                 | Required | Description                                |
+| ---------- | ------------------------------------ | -------- | ------------------------------------------ |
+| `hooks`    | `Record<string, ReactHook<unknown>>` | ✅       | Object mapping hook keys to hook functions |
+| `children` | `ReactNode`                          | ✅       | Child components that can access the hooks |
 
 ### Example
 
 ```tsx
+import { HookProvider } from 'react-use-anywhere';
+import { useNavigate } from 'react-router-dom';
+
 const hooks = {
   navigation: useNavigate,
   auth: useAuth,
   theme: useTheme,
-  notifications: useNotifications,
 };
 
 function App() {
   return (
     <HookProvider hooks={hooks}>
       <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </Router>
+    </HookProvider>
+  );
+}
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -91,10 +101,10 @@ function App() {
 
 ### Props
 
-| Prop       | Type        | Required | Description                                      |
-| ---------- | ----------- | -------- | ------------------------------------------------ |
-| `hooks`    | `T`         | ✅       | Typed object mapping hook keys to hook functions |
-| `children` | `ReactNode` | ✅       | Child components that can access the hooks       |
+| Prop       | Type                                           | Required | Description                                      |
+| ---------- | ---------------------------------------------- | -------- | ------------------------------------------------ |
+| `hooks`    | `T extends Record<string, ReactHook<unknown>>` | ✅       | Typed object mapping hook keys to hook functions |
+| `children` | `ReactNode`                                    | ✅       | Child components that can access the hooks       |
 
 ### Type Parameter
 
@@ -140,7 +150,7 @@ function App() {
 
 ## useHookContext
 
-Low-level hook to access the hook context directly.
+Hook to access the hook context directly. This gives you access to all executed hook values.
 
 ### Usage
 
@@ -150,24 +160,26 @@ import { useHookContext } from 'react-use-anywhere';
 function MyComponent() {
   const context = useHookContext();
 
-  if (!context) {
-    throw new Error('Component must be within HookProvider');
-  }
+  // Context contains all executed hook values
+  const navigationValue = context.navigation;
+  const authValue = context.auth;
 
-  const { hooks } = context;
-  // Access hooks directly
+  return <div>{/* Your component */}</div>;
 }
 ```
 
 ### Returns
 
-- `HookContext | null` - The hook context object or null if outside provider
+- `HookContext` - Object containing all hook execution results
 
-### Properties
+### Error Handling
 
-| Property | Type                        | Description                 |
-| -------- | --------------------------- | --------------------------- |
-| `hooks`  | `Record<string, ReactHook>` | The registered hooks object |
+Throws an error if used outside of a HookProvider:
+
+```typescript
+// This will throw an error
+const context = useHookContext(); // Error: useHookContext must be used within a HookProvider
+```
 
 ## useTypedHookContext
 
@@ -178,15 +190,19 @@ Type-safe version of useHookContext.
 ```tsx
 import { useTypedHookContext } from 'react-use-anywhere';
 
+interface AppHooks {
+  navigation: () => NavigateFunction;
+  auth: () => AuthState;
+}
+
 function MyComponent() {
   const context = useTypedHookContext<AppHooks>();
 
-  if (!context) {
-    throw new Error('Component must be within TypedHookProvider');
-  }
+  // Now you have full type safety
+  const navigate = context.navigation; // Type: NavigateFunction
+  const auth = context.auth; // Type: AuthState
 
-  const { hooks } = context;
-  // Access hooks with full type safety
+  return <div>{/* Your component */}</div>;
 }
 ```
 
@@ -196,26 +212,29 @@ function MyComponent() {
 
 ### Returns
 
-- `TypedHookContext<T> | null` - The typed hook context or null
+- Typed hook context with proper TypeScript inference
 
 ## Error Handling
 
 ### Provider Not Found
 
-If a service tries to access hooks outside of a provider:
+If you try to use hook context outside of a provider:
 
 ```typescript
 // This will throw an error
-const navigate = useHookService('navigation'); // Error: useHookService must be used within a HookProvider
+const context = useHookContext(); // Error: useHookContext must be used within a HookProvider
 ```
 
-### Hook Not Registered
+### Hook Access
 
-If a service tries to access a hook that wasn't registered:
+To access individual hook values, use the `useHook` function or access them directly from the context:
 
 ```typescript
-// If 'someHook' wasn't registered in the provider
-const hook = useHookService('someHook'); // Error: Hook 'someHook' not found in HookProvider
+import { useHook } from 'react-use-anywhere';
+
+// Access individual hook values
+const navigation = useHook<NavigateFunction>('navigation');
+const auth = useHook<AuthState>('auth');
 ```
 
 ## Advanced Patterns

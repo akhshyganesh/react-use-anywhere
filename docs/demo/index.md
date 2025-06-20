@@ -51,7 +51,7 @@ The demo demonstrates these key features:
 │  │                 │    │ • logger.ts                 │ │
 │  └─────────────────┘    └─────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────┤
-│              TypedHookProvider                          │
+│              HookProvider / TypedHookProvider           │
 │          navigation • auth • theme                      │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -62,20 +62,21 @@ The demo demonstrates these key features:
 
 ```typescript
 // Services can handle login and navigate automatically
-export const authService = {
-  async login(name: string, email: string) {
-    const navigate = useTypedHookService<AppHooks>('navigation');
-    const { login } = useTypedHookService<AppHooks>('auth');
+export const authService = createSingletonService<AuthHook>('auth');
 
+export const simulateLogin = async (name: string, email: string) => {
+  return authService.use(async (auth) => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    login(name, email);
-    logger.log('User logged in successfully');
+    auth.login(name, email);
+    console.log('User logged in successfully');
 
     // Navigate from service layer! 🎉
-    navigate('/');
-  },
+    return navigationService.use((navigate) => {
+      navigate('/');
+    });
+  });
 };
 ```
 
@@ -83,13 +84,13 @@ export const authService = {
 
 ```typescript
 // Theme changes can be triggered from anywhere
-export const themeService = {
-  toggleTheme() {
-    const { toggle, theme } = useTypedHookService<AppHooks>('theme');
+export const themeService = createSingletonService<ThemeHook>('theme');
 
-    toggle();
-    logger.log(`Theme switched to: ${theme === 'light' ? 'dark' : 'light'}`);
-  },
+export const toggleTheme = () => {
+  return themeService.use((theme) => {
+    theme.toggle();
+    console.log(`Theme switched to: ${theme.theme}`);
+  });
 };
 ```
 
@@ -97,7 +98,14 @@ export const themeService = {
 
 ```typescript
 // Navigation logic separated from UI
-export const navigationService = {
+export const navigationService = createSingletonService<NavigateFunction>('navigation');
+
+export const goToLogin = () => {
+  return navigationService.use((navigate) => {
+    navigate('/login');
+    console.log('Navigated to login page');
+  });
+};
   goToLogin() {
     const navigate = useTypedHookService<AppHooks>('navigation');
     navigate('/login');

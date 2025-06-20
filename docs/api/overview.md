@@ -9,40 +9,62 @@ import {
   // Providers
   HookProvider,
   TypedHookProvider,
+  useHookContext,
+  useTypedHookContext,
 
-  // Hook Services
+  // Hook Services (use in React components)
   useHookService,
   useTypedHookService,
   useStrictHookService,
 
-  // Service Creation
+  // Direct Hook Access (use in React components)
+  useHook,
+  useTypedHook,
+  useStrictHook,
+  useAllHooks,
+
+  // Service Creation (use in service files)
   createHookService,
   createSingletonService,
-  createTypedSingletonService,
-
-  // Utilities
+  getSingletonService,
   resetAllServices,
+  createTypedSingletonService,
+  createStrictSingletonService,
+  createInferredSingletonService,
 
   // Types
+  type ReactHook,
   type HookService,
   type TypedHookService,
+  type HookContext,
   type HookRegistry,
+  type HookProviderProps,
+  type TypedHookProviderProps,
+  type ExtractHookType,
+  type HookReturnTypes,
+  type ServiceFactory,
+  type TypedServiceFactory,
   // ... more types
 } from 'react-use-anywhere';
 ```
 
 ## Quick Reference
 
-| Function                      | Purpose                  | Type Safety  |
-| ----------------------------- | ------------------------ | ------------ |
-| `HookProvider`                | Basic hook provider      | Runtime      |
-| `TypedHookProvider`           | Type-safe provider       | Compile-time |
-| `useHookService`              | Access registered hooks  | Runtime      |
-| `useTypedHookService`         | Type-safe hook access    | Compile-time |
-| `useStrictHookService`        | Strict type checking     | Compile-time |
-| `createHookService`           | Create service instance  | Runtime      |
-| `createSingletonService`      | Create singleton service | Runtime      |
-| `createTypedSingletonService` | Type-safe singleton      | Compile-time |
+| Function                         | Purpose                                | Used In          | Type Safety  |
+| -------------------------------- | -------------------------------------- | ---------------- | ------------ |
+| `HookProvider`                   | Basic hook provider                    | React Components | Runtime      |
+| `TypedHookProvider`              | Type-safe provider                     | React Components | Compile-time |
+| `useHookService`                 | Connect service to hook                | React Components | Runtime      |
+| `useTypedHookService`            | Type-safe service connection           | React Components | Compile-time |
+| `useStrictHookService`           | Strict type-safe connection            | React Components | Compile-time |
+| `useHook`                        | Direct hook access                     | React Components | Runtime      |
+| `useTypedHook`                   | Type-safe direct access                | React Components | Compile-time |
+| `useStrictHook`                  | Strict type-safe direct access         | React Components | Compile-time |
+| `createHookService`              | Create service instance                | Service Files    | Runtime      |
+| `createSingletonService`         | Create singleton service (recommended) | Service Files    | Runtime      |
+| `createTypedSingletonService`    | Type-safe singleton                    | Service Files    | Compile-time |
+| `createStrictSingletonService`   | Strict type-safe singleton             | Service Files    | Compile-time |
+| `createInferredSingletonService` | Auto-inferred type-safe singleton      | Service Files    | Compile-time |
 
 ## Categories
 
@@ -55,19 +77,27 @@ Components that make hooks available throughout your app:
 
 ### [Hooks](/api/hooks)
 
-Functions to access registered hooks from services:
+Functions to access registered hooks from React components:
 
-- `useHookService` - Basic hook access
-- `useTypedHookService` - Type-safe access
+- `useHookService` - Connect service to hook
+- `useTypedHookService` - Type-safe service connection
 - `useStrictHookService` - Strict type checking
+- `useHook` - Direct hook value access
+- `useTypedHook` - Type-safe direct access
+- `useStrictHook` - Strict type-safe direct access
+- `useAllHooks` - Access all hook values
 
 ### [Services](/api/services)
 
 Functions to create and manage services:
 
-- `createHookService` - Service factory
-- `createSingletonService` - Singleton pattern
+- `createHookService` - Service factory (creates new instance)
+- `createSingletonService` - Singleton pattern (recommended)
+- `getSingletonService` - Get existing singleton
+- `resetAllServices` - Reset all singletons (testing)
 - `createTypedSingletonService` - Type-safe singleton
+- `createStrictSingletonService` - Strict type-safe singleton
+- `createInferredSingletonService` - Auto-inferred singleton
 
 ### [Types](/api/types)
 
@@ -78,14 +108,30 @@ TypeScript type definitions and interfaces for type safety.
 ### Basic Pattern
 
 ```typescript
-// 1. Setup provider
-<HookProvider hooks={{ navigation: useNavigate }}>
-  <App />
-</HookProvider>
+// 1. Create service (in service file)
+import { createSingletonService } from 'react-use-anywhere';
 
-// 2. Use in service
-const navigate = useHookService('navigation');
-navigate('/dashboard');
+export const navigationService = createSingletonService('navigation');
+
+export const goHome = () => {
+  return navigationService.use((navigate) => {
+    navigate('/');
+  });
+};
+
+// 2. Connect service (in React component)
+import { useHookService } from 'react-use-anywhere';
+import { navigationService } from '../services/navigationService';
+
+function MyComponent() {
+  useHookService(navigationService, 'navigation');
+  return <div>Component content</div>;
+}
+
+// 3. Setup provider (in App)
+<HookProvider hooks={{ navigation: useNavigate }}>
+  <MyComponent />
+</HookProvider>
 ```
 
 ### Type-Safe Pattern
@@ -94,10 +140,16 @@ navigate('/dashboard');
 // 1. Define types
 type AppHooks = {
   navigation: () => NavigateFunction;
+  auth: () => AuthState;
 };
 
-// 2. Setup typed provider
-<TypedHookProvider<AppHooks> hooks={{ navigation: useNavigate }}>
+// 2. Create typed service
+import { createTypedSingletonService } from 'react-use-anywhere';
+
+export const navigationService = createTypedSingletonService<AppHooks, 'navigation'>('navigation');
+
+// 3. Setup typed provider
+<TypedHookProvider<AppHooks> hooks={{ navigation: useNavigate, auth: useAuth }}>
   <App />
 </TypedHookProvider>
 

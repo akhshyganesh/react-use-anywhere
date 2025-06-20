@@ -8,7 +8,7 @@ A complete authentication service that handles login, logout, and session manage
 
 ```typescript
 // services/authService.ts
-import { useHookService } from 'react-use-anywhere';
+import { createSingletonService } from 'react-use-anywhere';
 
 export interface User {
   id: string;
@@ -23,118 +23,190 @@ export interface LoginCredentials {
   password: string;
 }
 
-export const authService = {
-  async login(credentials: LoginCredentials) {
-    const navigate = useHookService('navigation');
-    const { setUser, setLoading } = useHookService('auth');
-    const { addNotification } = useHookService('notifications');
+// Create services for different hooks
+export const authService = createSingletonService('auth');
+export const navigationService = createSingletonService('navigate');
+export const notificationsService = createSingletonService('notifications');
 
-    try {
-      setLoading(true);
+export const login = async (credentials: LoginCredentials) => {
+  try {
+    // Set loading state
+    authService.use((auth) => {
+      auth.setLoading(true);
+    });
 
-      // API call to authenticate
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
+    // API call to authenticate
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
-      }
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Login failed');
+    }
 
-      const { user, token } = await response.json();
+    const { user, token } = await response.json();
 
-      // Store auth token
-      localStorage.setItem('authToken', token);
+    // Store auth token
+    localStorage.setItem('authToken', token);
 
-      // Update auth state
-      setUser(user);
+    // Update auth state
+    authService.use((auth) => {
+      auth.setUser(user);
+    });
 
-      // Show success message
-      addNotification({
+    // Show success message
+    notificationsService.use((notifications) => {
+      notifications.addNotification({
         type: 'success',
         message: `Welcome back, ${user.name}!`,
       });
+    });
 
-      // Navigate based on user role
+    // Navigate based on user role
+    navigationService.use((navigate) => {
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
         navigate('/dashboard');
       }
+    });
 
-      return user;
-    } catch (error) {
-      addNotification({
+    return user;
+  } catch (error) {
+    notificationsService.use((notifications) => {
+      notifications.addNotification({
         type: 'error',
         message: error.message || 'Login failed',
       });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  },
+    });
+    throw error;
+  } finally {
+    authService.use((auth) => {
+      auth.setLoading(false);
+    });
+  }
+};
 
-  async logout() {
-    const navigate = useHookService('navigation');
-    const { clearUser } = useHookService('auth');
-    const { addNotification } = useHookService('notifications');
+export const logout = async () => {
+  try {
+    // Call logout API
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+      },
+    });
+  } catch (error) {
+    console.warn('Logout API call failed:', error);
+  } finally {
+    // Clear local state regardless of API success
+    localStorage.removeItem('authToken');
 
-    try {
-      // Call logout API
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-        },
-      });
-    } catch (error) {
-      console.warn('Logout API call failed:', error);
-    } finally {
-      // Clear local state regardless of API success
-      localStorage.removeItem('authToken');
-      clearUser();
+    authService.use((auth) => {
+      auth.clearUser();
+    });
 
-      addNotification({
+    notificationsService.use((notifications) => {
+      notifications.addNotification({
         type: 'info',
         message: 'You have been logged out',
       });
+    });
 
+    navigationService.use((navigate) => {
       navigate('/login');
-    }
-  },
+    });
+  }
+};
 
-  async refreshToken() {
-    const { setUser, clearUser } = useHookService('auth');
-    const navigate = useHookService('navigation');
+export const refreshToken = async () => {
+  try {
+    const currentToken = localStorage.getItem('authToken');
+    if (!currentToken) {
+      throw new Error('No token found');
+    }
+
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${currentToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Token refresh failed');
+    }
+
+    const { user, token } = await response.json();
+
+    localStorage.setItem('authToken', token);
+
+    authService.use((auth) => {
+      auth.setUser(user);
+    });
+
+    return user;
+  } catch (error) {
+    // Token is invalid, clear auth state
+    localStorage.removeItem('authToken');
+
+    authService.use((auth) => {
+      auth.clearUser();
+    });
+
+    navigationService.use((navigate) => {
+      navigate('/login');
+    });
+
+    throw error;
+  }
+};
+
+export const getCurrentUser = () => {
+  return authService.use((auth) => {
+    return auth.user;
+  });
+};
+
+export const isAuthenticated = () => {
+  return authService.use((auth) => {
+    return auth.isAuthenticated;
+  });
+};
+```
+
+```tsx
+// components/LoginForm.tsx
+import React, { useState } from 'react';
+import { useHookService } from 'react-use-anywhere';
+import { authService, navigationService, notificationsService, login } from '../services/authService';
+
+export function LoginForm() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Connect services to hooks - this is required!
+  useHookService(authService, 'auth');
+  useHookService(navigationService, 'navigation');
+  useHookService(notificationsService, 'notifications');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
-      const currentToken = localStorage.getItem('authToken');
-      if (!currentToken) {
-        throw new Error('No token found');
-      }
-
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${currentToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Token refresh failed');
-      }
-
-      const { user, token } = await response.json();
-
-      localStorage.setItem('authToken', token);
-      setUser(user);
-
-      return user;
+      await login({ email, password });
+      // Service handles navigation and notifications
     } catch (error) {
-      // Token is invalid, clear auth state
+      // Service handles error notifications
+    } finally {
+      setIsLoading(false);
+    }
+  };
       localStorage.removeItem('authToken');
       clearUser();
       navigate('/login');

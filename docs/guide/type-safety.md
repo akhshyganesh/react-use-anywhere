@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 // Define your hook types
 type AppHooks = {
-  navigation: () => ReturnType<typeof useNavigate>;
+  navigate: () => ReturnType<typeof useNavigate>;
   auth: () => {
     user: User | null;
     login: (credentials: LoginCredentials) => Promise<void>;
@@ -30,7 +30,7 @@ function App() {
   return (
     <TypedHookProvider<AppHooks>
       hooks={{
-        navigation: useNavigate,
+        navigate: useNavigate,
         auth: useAuth,
         theme: useTheme,
       }}
@@ -46,33 +46,49 @@ function App() {
 Use typed services for complete type safety:
 
 ```typescript
-import { useTypedHookService } from 'react-use-anywhere';
+import { createStrictSingletonService, useTypedHookService } from 'react-use-anywhere';
+
+// Create typed services
+export const navigationService = createStrictSingletonService<AppHooks>('navigate');
+export const authService = createStrictSingletonService<AppHooks>('auth');
 
 // Service with full type inference
-export const authService = {
+export const authServiceModule = {
   async login(email: string, password: string) {
-    // navigate is fully typed as NavigateFunction
-    const navigate = useTypedHookService<AppHooks>('navigation');
-
-    // auth methods are fully typed
-    const { login, setUser } = useTypedHookService<AppHooks>('auth');
-
     try {
-      await login({ email, password });
-      navigate('/dashboard'); // ✅ Type-safe navigation
+      const user = await authService.use(async (auth) => {
+        return auth.login({ email, password });
+      });
+
+      // Navigate after successful login
+      navigationService.use((navigate) => {
+        navigate('/dashboard'); // ✅ Type-safe navigation
+      });
     } catch (error) {
-      navigate('/login?error=invalid'); // ✅ Type-safe parameters
+      navigationService.use((navigate) => {
+        navigate('/login?error=invalid'); // ✅ Type-safe parameters
+      });
     }
   },
 
   logout() {
-    const navigate = useTypedHookService<AppHooks>('navigation');
-    const { logout } = useTypedHookService<AppHooks>('auth');
+    authService.use((auth) => {
+      auth.logout();
+    });
 
-    logout();
-    navigate('/login');
+    navigationService.use((navigate) => {
+      navigate('/login');
+    });
   },
 };
+
+// Component connection (required)
+function AuthComponent() {
+  useTypedHookService<AppHooks, 'auth'>(authService, 'auth');
+  useTypedHookService<AppHooks, 'navigate'>(navigationService, 'navigate');
+
+  return <div>...</div>;
+}
 ```
 
 ## Global Type Declaration

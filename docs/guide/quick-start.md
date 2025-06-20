@@ -32,75 +32,73 @@ export default App;
 
 ## Step 2: Create Your First Service
 
-Create a service that can access your hooks:
+Create a service using `createSingletonService`:
 
 ```typescript
 // services/authService.ts
-import { useHookService } from 'react-use-anywhere';
+import { createSingletonService } from 'react-use-anywhere';
 
-export const authService = {
-  async login(email: string, password: string) {
-    const navigate = useHookService('navigation');
-    const { setUser, setLoading } = useHookService('auth');
+// Create a singleton service for the 'auth' hook
+export const authService = createSingletonService('auth');
+
+export const login = async (email: string, password: string) => {
+  return authService.use((auth) => {
+    // Access the auth hook value
+    auth.setLoading(true);
 
     try {
-      setLoading(true);
-
       // Simulate API call
-      const response = await fetch('/api/login', {
+      const user = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-      });
+      }).then((res) => res.json());
 
-      if (!response.ok) {
-        throw new Error('Login failed');
-      }
-
-      const user = await response.json();
-      setUser(user);
-
-      // Navigate from service layer! 🎉
-      navigate('/dashboard');
+      auth.setUser(user);
+      return user;
     } catch (error) {
       console.error('Login error:', error);
-      // Could also navigate to error page
-      navigate('/login?error=true');
+      throw error;
     } finally {
-      setLoading(false);
+      auth.setLoading(false);
     }
-  },
+  });
+};
 
-  logout() {
-    const navigate = useHookService('navigation');
-    const { clearUser } = useHookService('auth');
-
-    clearUser();
-    navigate('/login');
-  },
+export const logout = () => {
+  return authService.use((auth) => {
+    auth.clearUser();
+  });
 };
 ```
 
-## Step 3: Use Your Service
+## Step 3: Connect Service to Hook
 
-Now use your service from anywhere - components, other services, utilities:
+In your React component, connect the service to the hook:
 
 ```tsx
 // components/LoginForm.tsx
 import React, { useState } from 'react';
-import { authService } from '../services/authService';
+import { useHookService } from 'react-use-anywhere';
+import { authService, login } from '../services/authService';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Connect the service to the hook - this is required!
+  useHookService(authService, 'auth');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Call service method - it handles navigation internally
-    await authService.login(email, password);
+    try {
+      await login(email, password);
+      // Service handles the login logic
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
   };
-
   return (
     <form onSubmit={handleSubmit}>
       <input
@@ -128,57 +126,67 @@ export function LoginForm() {
 Add more services for different concerns:
 
 ```typescript
-// services/themeService.ts
-import { useHookService } from 'react-use-anywhere';
+// services/navigationService.ts
+import { createSingletonService } from 'react-use-anywhere';
 
-export const themeService = {
-  toggleTheme() {
-    const { theme, setTheme } = useHookService('theme');
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
+export const navigationService = createSingletonService('navigate');
 
-    // Save to localStorage
-    localStorage.setItem('theme', newTheme);
-  },
+export const goToHome = () => {
+  return navigationService.use((navigate) => {
+    navigate('/');
+  });
+};
 
-  initializeTheme() {
-    const { setTheme } = useHookService('theme');
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
-
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else {
-      // Use system preference
-      const prefersDark = window.matchMedia(
-        '(prefers-color-scheme: dark)'
-      ).matches;
-      setTheme(prefersDark ? 'dark' : 'light');
-    }
-  },
+export const goToLogin = () => {
+  return navigationService.use((navigate) => {
+    navigate('/login');
+  });
 };
 ```
 
-```typescript
-// services/analyticsService.ts
+```tsx
+// components/Navigation.tsx - Don't forget to connect!
+import React from 'react';
 import { useHookService } from 'react-use-anywhere';
+import {
+  navigationService,
+  goToHome,
+  goToLogin,
+} from '../services/navigationService';
 
-export const analyticsService = {
-  trackUserAction(action: string, data?: any) {
-    const { user } = useHookService('auth');
-    const navigate = useHookService('navigation');
+export function Navigation() {
+  // Connect service to hook
+  useHookService(navigationService, 'navigate');
 
-    // Track the event
-    analytics.track(action, {
-      userId: user?.id,
-      timestamp: Date.now(),
-      ...data,
-    });
+  return (
+    <nav>
+      <button onClick={goToHome}>Home</button>
+      <button onClick={goToLogin}>Login</button>
+    </nav>
+  );
+}
+```
 
-    // Redirect premium users to special page
-    if (user?.isPremium && action === 'upgrade_attempt') {
-      navigate('/premium-dashboard');
-    }
-  },
+```typescript
+// services/themeService.ts
+import { createSingletonService } from 'react-use-anywhere';
+
+export const themeService = createSingletonService('theme');
+
+export const toggleTheme = () => {
+  return themeService.use((theme) => {
+    theme.toggle();
+
+    // Save to localStorage
+    localStorage.setItem('theme', theme.theme);
+    return theme.theme;
+  });
+};
+
+export const getCurrentTheme = () => {
+  return themeService.use((theme) => {
+    return theme.theme;
+  });
 };
 ```
 
@@ -188,96 +196,107 @@ Services can call other services:
 
 ```typescript
 // services/userService.ts
-import { useHookService } from 'react-use-anywhere';
-import { authService } from './authService';
-import { analyticsService } from './analyticsService';
+import { createSingletonService } from 'react-use-anywhere';
+import { logout } from './authService';
+import { goToHome } from './navigationService';
 
-export const userService = {
-  async updateProfile(profileData: ProfileData) {
-    const { user, setUser } = useHookService('auth');
-    const navigate = useHookService('navigation');
+export const userService = createSingletonService('auth');
 
+export const updateProfile = async (profileData: ProfileData) => {
+  return userService.use(async (auth) => {
     try {
-      const updatedUser = await api.updateProfile(user.id, profileData);
-      setUser(updatedUser);
+      const updatedUser = await api.updateProfile(auth.user.id, profileData);
+      auth.setUser(updatedUser);
 
-      // Track the action
-      analyticsService.trackUserAction('profile_updated', {
-        fields: Object.keys(profileData),
-      });
-
-      navigate('/profile?updated=true');
+      return updatedUser;
     } catch (error) {
       if (error.status === 401) {
         // Session expired, logout user
-        authService.logout();
+        await logout();
+        goToHome();
       }
       throw error;
     }
-  },
+  });
 };
 ```
 
 ## Complete Example
 
-Here's a full working example:
+Here's a full working example based on the actual demo implementation:
 
 ::: details Complete App.tsx
 
 ```tsx
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { HookProvider } from 'react-use-anywhere';
 
+// Define hook types for type safety
+type NavigateFunction = (path: string) => void;
+type AuthState = {
+  user: { name: string; email: string } | null;
+  isAuthenticated: boolean;
+  login: (name: string, email: string) => void;
+  logout: () => void;
+};
+type ThemeState = {
+  theme: 'light' | 'dark';
+  isDark: boolean;
+  toggle: () => void;
+};
+
 // Custom hooks
-function useAuth() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+const useNavigation = (): NavigateFunction => {
+  return (path: string) => {
+    console.log(`Navigating to: ${path}`);
+    window.location.hash = path;
+  };
+};
+
+const useAuth = (): AuthState => {
+  const [user, setUser] = useState<{ name: string; email: string } | null>(
+    null
+  );
 
   return {
     user,
-    loading,
-    isAuthenticated: !!user,
-    setUser,
-    setLoading,
-    clearUser: () => setUser(null),
+    isAuthenticated: Boolean(user),
+    login: (name: string, email: string) => {
+      setUser({ name, email });
+      console.log('User logged in:', { name, email });
+    },
+    logout: () => {
+      setUser(null);
+      console.log('User logged out');
+    },
   };
-}
+};
 
-function useTheme() {
+const useTheme = (): ThemeState => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   return {
     theme,
-    setTheme,
     isDark: theme === 'dark',
+    toggle: () => {
+      const newTheme = theme === 'light' ? 'dark' : 'light';
+      setTheme(newTheme);
+      console.log('Theme changed to:', newTheme);
+    },
   };
-}
+};
 
-// Main App component
-function AppContent() {
+function App() {
   return (
     <HookProvider
       hooks={{
-        navigation: useNavigate,
+        navigate: useNavigation,
         auth: useAuth,
         theme: useTheme,
       }}
     >
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/" element={<HomePage />} />
-      </Routes>
+      <MyComponent />
     </HookProvider>
-  );
-}
-
-function App() {
-  return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
   );
 }
 
@@ -299,10 +318,16 @@ export default App;
 
 ## Key Takeaways
 
-✅ **Services can access hooks** - Use `useHookService` to access any registered hook  
-✅ **Navigation from anywhere** - Redirect users from service layer  
-✅ **Clean separation** - Business logic separate from UI components  
-✅ **Composable services** - Services can call other services  
-✅ **Type-safe** - Full TypeScript support available
+✅ **Create services with `createSingletonService`** - Use this to create services that can access hooks  
+✅ **Connect services in React components** - Use `useHookService(service, 'hookName')` to connect  
+✅ **Access hook values with `.use()`** - Services use `.use(callback)` to access hook values  
+✅ **Services are reusable** - Same service can be connected in multiple components  
+✅ **Type-safe variants available** - Use `createTypedSingletonService` for type safety
+
+## Important Notes
+
+🚨 **Services must be connected** - Always use `useHookService` in a React component to connect your service to a hook  
+🚨 **Use `.use()` method** - Services access hook values via the `.use(callback)` method  
+🚨 **Singleton pattern recommended** - Use `createSingletonService` instead of `createHookService` for better performance
 
 Ready to dive deeper? Check out [Core Concepts](/guide/core-concepts) next!

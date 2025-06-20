@@ -1,54 +1,70 @@
 # Hooks
 
-Functions that provide access to registered hooks from within services and other non-component code.
+Functions for accessing registered hooks from React components and connecting services to hooks.
 
 ## useHookService
 
-The primary function for accessing registered hooks from services.
+The primary function for connecting a service to a registered hook. **This must be called in a React component.**
 
 ### Signature
 
 ```typescript
-function useHookService<T = any>(key: string): T;
+function useHookService<T = unknown>(
+  service: HookService<T>,
+  hookName: string
+): void;
 ```
 
 ### Parameters
 
-| Parameter | Type     | Required | Description                                       |
-| --------- | -------- | -------- | ------------------------------------------------- |
-| `key`     | `string` | ✅       | The key used to register the hook in the provider |
+| Parameter  | Type             | Required | Description                                       |
+| ---------- | ---------------- | -------- | ------------------------------------------------- |
+| `service`  | `HookService<T>` | ✅       | The service instance to connect                   |
+| `hookName` | `string`         | ✅       | The key used to register the hook in the provider |
 
 ### Returns
 
-- `T` - The hook function or return value
+- `void` - This hook doesn't return anything, it connects the service
 
 ### Usage
 
+```tsx
+import { useHookService, createSingletonService } from 'react-use-anywhere';
+
+// Create service
+export const navigationService = createSingletonService('navigation');
+
+// Connect in React component
+function MyComponent() {
+  // Connect service to hook - this is required!
+  useHookService(navigationService, 'navigation');
+
+  return <div>My Component</div>;
+}
+```
+
+### Service Usage After Connection
+
 ```typescript
-import { useHookService } from 'react-use-anywhere';
-
-export const navigationService = {
-  goHome() {
-    const navigate = useHookService('navigation');
+// After connection, use the service
+export const goHome = () => {
+  return navigationService.use((navigate) => {
     navigate('/');
-  },
+  });
+};
 
-  goToProfile(userId: string) {
-    const navigate = useHookService('navigation');
+export const goToProfile = (userId: string) => {
+  return navigationService.use((navigate) => {
     navigate(`/profile/${userId}`);
-  },
+  });
 };
 ```
 
 ### Error Handling
 
-```typescript
-// Throws error if hook not found
-const navigate = useHookService('nonexistent'); // Error: Hook 'nonexistent' not found
-
-// Throws error if used outside provider
-const navigate = useHookService('navigation'); // Error: useHookService must be used within a HookProvider
-```
+- Throws error if hook not registered in provider
+- Provides helpful suggestions for misspelled hook names
+- Shows available hooks when hook name is invalid
 
 ## useTypedHookService
 
@@ -57,53 +73,54 @@ Type-safe version of useHookService with compile-time type checking.
 ### Signature
 
 ```typescript
-function useTypedHookService<T, K extends keyof T>(key: K): ReturnType<T[K]>;
+function useTypedHookService<
+  THooks extends Record<string, ReactHook<unknown>>,
+  K extends keyof THooks,
+>(service: HookService<ExtractHookType<THooks[K]>>, hookName: K): void;
 ```
 
 ### Type Parameters
 
-- `T` - The hook registry interface type
-- `K` - The hook key (automatically inferred from T)
+- `THooks` - The hook registry interface type
+- `K` - The hook key (automatically inferred from THooks)
 
 ### Parameters
 
-| Parameter | Type | Required | Description                         |
-| --------- | ---- | -------- | ----------------------------------- |
-| `key`     | `K`  | ✅       | The hook key (must exist in type T) |
-
-### Returns
-
-- `ReturnType<T[K]>` - The typed return value of the hook
+| Parameter  | Type                                      | Required | Description                         |
+| ---------- | ----------------------------------------- | -------- | ----------------------------------- |
+| `service`  | `HookService<ExtractHookType<THooks[K]>>` | ✅       | The typed service instance          |
+| `hookName` | `K`                                       | ✅       | The hook key (must exist in THooks) |
 
 ### Usage
 
-```typescript
-import { useTypedHookService } from 'react-use-anywhere';
+```tsx
+import {
+  useTypedHookService,
+  createTypedSingletonService,
+} from 'react-use-anywhere';
 
 type AppHooks = {
   navigation: () => NavigateFunction;
   auth: () => AuthState;
 };
 
-export const authService = {
-  async login(credentials: LoginCredentials) {
-    // Full type safety - navigate is typed as NavigateFunction
-    const navigate = useTypedHookService<AppHooks>('navigation');
+// Create typed services
+export const navigationService = createTypedSingletonService<
+  AppHooks,
+  'navigation'
+>('navigation');
+export const authService = createTypedSingletonService<AppHooks, 'auth'>(
+  'auth'
+);
 
-    // auth is typed as AuthState
-    const { login } = useTypedHookService<AppHooks>('auth');
+function MyComponent() {
+  // Type-safe connections - TypeScript validates hook names
+  useTypedHookService<AppHooks>(navigationService, 'navigation');
+  useTypedHookService<AppHooks>(authService, 'auth');
 
-    await login(credentials);
-    navigate('/dashboard');
-  },
-};
+  return <div>My Component</div>;
+}
 ```
-
-### Benefits
-
-- **Compile-time type checking** - Prevents typos in hook keys
-- **IntelliSense support** - Autocomplete for hook keys and return types
-- **Refactoring safety** - Automatic updates when hook types change
 
 ## useStrictHookService
 
@@ -112,78 +129,232 @@ Strict version with enhanced type checking and runtime validation.
 ### Signature
 
 ```typescript
-function useStrictHookService<T, K extends keyof T>(key: K): ReturnType<T[K]>;
+function useStrictHookService<
+  THooks extends Record<string, ReactHook<unknown>>,
+>(
+  service: HookService<ExtractHookType<THooks[keyof THooks]>>,
+  hookName: keyof THooks & string
+): void;
 ```
-
-### Type Parameters
-
-- `T` - The hook registry interface type
-- `K` - The hook key (must be a valid key of T)
-
-### Parameters
-
-| Parameter | Type | Required | Description                   |
-| --------- | ---- | -------- | ----------------------------- |
-| `key`     | `K`  | ✅       | The hook key (strictly typed) |
-
-### Returns
-
-- `ReturnType<T[K]>` - The strictly typed return value
 
 ### Usage
 
-```typescript
-import { useStrictHookService } from 'react-use-anywhere';
+```tsx
+import {
+  useStrictHookService,
+  createStrictSingletonService,
+} from 'react-use-anywhere';
 
-export const strictService = {
-  handleNavigation() {
-    // This will fail at compile time if 'navigation' is not in AppHooks
-    const navigate = useStrictHookService<AppHooks, 'navigation'>('navigation');
-
-    // This would cause a TypeScript error
-    // const invalid = useStrictHookService<AppHooks, 'invalid'>('invalid');
-
-    navigate('/dashboard');
-  },
+// Define hooks type
+type AppHooks = {
+  navigation: () => NavigateFunction;
+  auth: () => AuthState;
 };
+
+// Create strict service
+export const navigationService =
+  createStrictSingletonService<AppHooks>('navigation');
+
+function MyComponent() {
+  // Strict type checking - compile-time validation
+  useStrictHookService<AppHooks>(navigationService, 'navigation'); // ✅ Valid
+
+  // This would cause TypeScript error:
+  // useStrictHookService<AppHooks>(navigationService, 'invalid'); // ❌ Error
+
+  return <div>My Component</div>;
+}
 ```
 
 ## useHook
 
-Alias for useHookService - shorter syntax.
+Direct access to hook values within React components.
 
 ### Signature
 
 ```typescript
-function useHook<T = any>(key: string): T;
+function useHook<T = unknown>(hookName: string): T | undefined;
 ```
 
-Identical to `useHookService` but with a shorter name.
+### Parameters
+
+| Parameter  | Type     | Required | Description                |
+| ---------- | -------- | -------- | -------------------------- |
+| `hookName` | `string` | ✅       | Name of the hook to access |
+
+### Returns
+
+- `T | undefined` - The hook value or undefined if not found
 
 ### Usage
 
-```typescript
+```tsx
 import { useHook } from 'react-use-anywhere';
 
-export const shortService = {
-  navigate() {
-    const navigate = useHook('navigation'); // Same as useHookService
-    navigate('/dashboard');
-  },
-};
+function MyComponent() {
+  // Direct access to hook values
+  const navigate = useHook<NavigateFunction>('navigation');
+  const auth = useHook<AuthState>('auth');
+
+  const handleLogin = () => {
+    if (navigate && auth) {
+      auth.login('user@example.com', 'password');
+      navigate('/dashboard');
+    }
+  };
+
+  return <button onClick={handleLogin}>Login</button>;
+}
 ```
 
 ## useTypedHook
 
-Alias for useTypedHookService - shorter syntax.
+Type-safe direct access to hook values.
 
 ### Signature
 
 ```typescript
-function useTypedHook<T, K extends keyof T>(key: K): ReturnType<T[K]>;
+function useTypedHook<
+  THooks extends Record<string, ReactHook<unknown>>,
+  K extends keyof THooks,
+>(hookName: K): ExtractHookType<THooks[K]>;
 ```
 
 ### Usage
+
+```tsx
+import { useTypedHook } from 'react-use-anywhere';
+
+type AppHooks = {
+  navigation: () => NavigateFunction;
+  auth: () => AuthState;
+};
+
+function MyComponent() {
+  // Type-safe direct access
+  const navigate = useTypedHook<AppHooks, 'navigation'>('navigation');
+  const auth = useTypedHook<AppHooks, 'auth'>('auth');
+
+  return <div>Typed access to hooks</div>;
+}
+```
+
+## useStrictHook
+
+Strict type-safe direct access to hook values.
+
+### Signature
+
+```typescript
+function useStrictHook<THooks extends Record<string, ReactHook<unknown>>>(
+  hookName: keyof THooks & string
+): ExtractHookType<THooks[typeof hookName]>;
+```
+
+### Usage
+
+```tsx
+import { useStrictHook } from 'react-use-anywhere';
+
+type AppHooks = {
+  navigation: () => NavigateFunction;
+  auth: () => AuthState;
+};
+
+function MyComponent() {
+  // Strict type checking
+  const navigate = useStrictHook<AppHooks>('navigation'); // ✅ Valid
+  const auth = useStrictHook<AppHooks>('auth'); // ✅ Valid
+  // const invalid = useStrictHook<AppHooks>('invalid'); // ❌ TypeScript Error
+
+  return <div>Strict typed hooks</div>;
+}
+```
+
+## useAllHooks
+
+Access all registered hook values at once.
+
+### Signature
+
+```typescript
+function useAllHooks(): Record<string, unknown>;
+```
+
+### Returns
+
+- `Record<string, unknown>` - Object containing all hook values
+
+### Usage
+
+```tsx
+import { useAllHooks } from 'react-use-anywhere';
+
+function DebugComponent() {
+  const allHooks = useAllHooks();
+
+  return (
+    <div>
+      <h3>All Hook Values:</h3>
+      <pre>{JSON.stringify(allHooks, null, 2)}</pre>
+    </div>
+  );
+}
+```
+
+## Hook Connection Pattern
+
+Here's the recommended pattern for using hooks:
+
+```typescript
+// 1. Create services (in service files)
+import { createSingletonService } from 'react-use-anywhere';
+
+export const authService = createSingletonService<AuthState>('auth');
+export const navigationService = createSingletonService<NavigateFunction>('navigation');
+
+// Service functions
+export const login = (credentials: LoginCredentials) => {
+  return authService.use((auth) => {
+    auth.login(credentials.email, credentials.password);
+  });
+};
+
+export const goHome = () => {
+  return navigationService.use((navigate) => {
+    navigate('/');
+  });
+};
+
+// 2. Connect services (in React components)
+import { useHookService } from 'react-use-anywhere';
+
+function App() {
+  // Connect all services you want to use
+  useHookService(authService, 'auth');
+  useHookService(navigationService, 'navigation');
+
+  return <MyAppContent />;
+}
+
+// 3. Use services anywhere
+function LoginButton() {
+  const handleLogin = () => {
+    login({ email: 'user@example.com', password: 'password' });
+    goHome(); // Navigate after login
+  };
+
+  return <button onClick={handleLogin}>Login</button>;
+}
+```
+
+## Key Points
+
+- **Connection required** - Services must be connected with `useHookService` in React components
+- **Use services, not hooks directly** - Create services and helper functions instead of calling hooks everywhere
+- **Type safety available** - Use typed variants for compile-time checking
+- **Direct access available** - Use `useHook` for direct access when services aren't needed
+- **Debug with useAllHooks** - Access all hook values for debugging
 
 ```typescript
 import { useTypedHook } from 'react-use-anywhere';

@@ -40,24 +40,51 @@ Simple setup, powerful results
 
 ## Quick Example
 
+Make sure you have **'auth'** keyboard constant which is given in createSingletonService, useHookService and key in hooks of HookProvider
+
 ```typescript
-// In your service file (not a React component!)
-import { useHookService } from 'react-use-anywhere';
+// 1. Create a service (in service file)
+import { createSingletonService } from 'react-use-anywhere';
 
-export const authService = {
-  async login(credentials: LoginCredentials) {
-    const navigate = useHookService('navigation');
-    const { setUser } = useHookService('auth');
+export const authService = createSingletonService('auth');
 
-    try {
-      const user = await api.login(credentials);
-      setUser(user);
-      navigate('/dashboard'); // Navigate from service layer!
-    } catch (error) {
-      console.error('Login failed:', error);
-    }
-  },
+export const login = async (credentials: LoginCredentials) => {
+  return authService.use((auth) => {
+    // Use auth hook value directly
+    auth.login(credentials.email, credentials.password);
+  });
 };
+```
+
+```tsx
+// 2. Connect service to hook (in React component)
+import { useHookService } from 'react-use-anywhere';
+import { authService } from '../services/authService';
+
+function MyComponent() {
+  // Connect the service to the hook
+  useHookService(authService, 'auth');
+
+  return <div>My Component</div>;
+}
+```
+
+```tsx
+// 3. Warp HookProvider in App Component
+import { HookProvider } from 'react-use-anywhere';
+import { useAuth } from './hooks/useAuth';
+
+function App() {
+  return (
+    <HookProvider
+      hooks={{
+        auth: useAuth,
+      }}
+    >
+      <MyComponent />
+    </HookProvider>
+  );
+}
 ```
 
 Get started with our [installation guide](/guide/installation) or jump into [examples](/examples/basic-usage)!

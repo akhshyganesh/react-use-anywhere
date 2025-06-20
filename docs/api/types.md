@@ -9,44 +9,60 @@ TypeScript type definitions and interfaces for React Use Anywhere.
 Represents any React hook function.
 
 ```typescript
-type ReactHook = (...args: any[]) => any;
+type ReactHook<T = unknown> = () => T;
 ```
 
 **Usage:**
 
 ```typescript
-const useCustomHook: ReactHook = () => {
-  // Hook implementation
+const useCustomHook: ReactHook<string> = () => {
+  return 'custom value';
 };
 ```
 
 ### HookService
 
-Basic hook service interface.
+Interface for services that can store and use hook values.
 
 ```typescript
-interface HookService {
-  [key: string]: ReactHook;
+interface HookService<T = unknown> {
+  // Internal method used by useHookService
+  _setValue(newValue: T): void;
+  // Get the current hook value
+  get(): T | null;
+  // Check if the hook value is available
+  isReady(): boolean;
+  // Use the hook value in a callback
+  use<R = unknown>(callback: (value: T) => R): R | null;
+  // Reset the service (for testing)
+  _reset(): void;
 }
 ```
 
 **Usage:**
 
 ```typescript
-const hooks: HookService = {
-  navigation: useNavigate,
-  auth: useAuth,
-  theme: useTheme,
-};
+import { createSingletonService } from 'react-use-anywhere';
+
+const authService = createSingletonService<AuthState>('auth');
+
+// Use the service
+const user = authService.use((auth) => auth.user);
 ```
 
 ### TypedHookService
 
-Type-safe hook service interface.
+Type-safe hook service interface that knows about valid hook names.
 
 ```typescript
-interface TypedHookService<T> {
-  [K in keyof T]: T[K];
+interface TypedHookService<
+  T = unknown,
+  THooks extends Record<string, ReactHook<unknown>> = Record<
+    string,
+    ReactHook<unknown>
+  >,
+> extends HookService<T> {
+  readonly _hookNames?: THooks; // Phantom property for type information
 }
 ```
 
@@ -58,44 +74,31 @@ interface AppHooks {
   auth: () => AuthState;
 }
 
-const hooks: TypedHookService<AppHooks> = {
-  navigation: useNavigate,
-  auth: useAuth,
-};
+const typedService = createTypedSingletonService<AppHooks, 'auth'>('auth');
 ```
 
 ## Provider Types
 
 ### HookContext
 
-The context object provided by HookProvider.
+The context object provided by HookProvider containing executed hook values.
 
 ```typescript
 interface HookContext {
-  hooks: Record<string, ReactHook>;
+  [hookName: string]: unknown;
 }
-```
-
-**Properties:**
-
-- `hooks` - Object containing all registered hooks
-
-### HookRegistry
-
-Registry of all available hooks.
-
-```typescript
-type HookRegistry<T = Record<string, ReactHook>> = T;
 ```
 
 **Usage:**
 
 ```typescript
-type AppHookRegistry = HookRegistry<{
-  navigation: () => NavigateFunction;
-  auth: () => AuthState;
-  theme: () => ThemeState;
-}>;
+import { useHookContext } from 'react-use-anywhere';
+
+function MyComponent() {
+  const context = useHookContext();
+  const authValue = context.auth; // The result of executing useAuth()
+  const navValue = context.navigation; // The result of executing useNavigate()
+}
 ```
 
 ### HookProviderProps
@@ -103,25 +106,25 @@ type AppHookRegistry = HookRegistry<{
 Props for the HookProvider component.
 
 ```typescript
-interface HookProviderProps {
-  hooks: Record<string, ReactHook>;
+interface HookProviderProps<
+  T extends Record<string, ReactHook<unknown>> = Record<
+    string,
+    ReactHook<unknown>
+  >,
+> {
   children: React.ReactNode;
+  hooks: T;
 }
 ```
-
-**Properties:**
-
-- `hooks` - Object mapping hook keys to hook functions
-- `children` - Child components to render
 
 ### TypedHookProviderProps
 
 Props for the TypedHookProvider component.
 
 ```typescript
-interface TypedHookProviderProps<T> {
-  hooks: T;
+interface TypedHookProviderProps<T extends Record<string, ReactHook<unknown>>> {
   children: React.ReactNode;
+  hooks: T;
 }
 ```
 
@@ -134,14 +137,24 @@ interface TypedHookProviderProps<T> {
 - `hooks` - Typed hook registry object
 - `children` - Child components to render
 
-## Hook Access Types
+### HookRegistry
+
+Global hook registry to track registered hooks.
+
+```typescript
+interface HookRegistry {
+  [key: string]: ReactHook<unknown>;
+}
+```
+
+## Utility Types
 
 ### ExtractHookType
 
 Utility type to extract the return type of a hook.
 
 ```typescript
-type ExtractHookType<T> = T extends (...args: any[]) => infer R ? R : never;
+type ExtractHookType<T> = T extends ReactHook<infer R> ? R : never;
 ```
 
 **Usage:**
@@ -156,8 +169,8 @@ type AuthHookReturn = ExtractHookType<typeof useAuth>;
 Maps hook keys to their return types.
 
 ```typescript
-type HookReturnTypes<T> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => infer R ? R : never;
+type HookReturnTypes<T extends Record<string, ReactHook<unknown>>> = {
+  [K in keyof T]: ExtractHookType<T[K]>;
 };
 ```
 
@@ -176,9 +189,54 @@ type HookReturns = HookReturnTypes<AppHooks>;
 // }
 ```
 
+### ValidatedHookName
+
+Branded type for validated hook names - prevents accidental string usage.
+
+```typescript
+type ValidatedHookName<T extends Record<string, ReactHook<unknown>>> = keyof T &
+  string;
+```
+
+### HookNames
+
+Type to extract hook names from a hooks object.
+
+```typescript
+type HookNames<T extends Record<string, ReactHook<unknown>>> = keyof T;
+```
+
+### HookReturnType
+
+Type to extract the return type of a hook by name.
+
+```typescript
+type HookReturnType<
+  T extends Record<string, ReactHook<unknown>>,
+  K extends keyof T,
+> = T[K] extends ReactHook<infer R> ? R : never;
+```
+
 ## Service Types
 
 ### ServiceFactory
+
+Factory function for creating services.
+
+```typescript
+type ServiceFactory<T> = () => HookService<T>;
+```
+
+### TypedServiceFactory
+
+Type-safe service factory with hook access.
+
+```typescript
+type TypedServiceFactory<
+  T,
+  THooks extends Record<string, ReactHook<unknown>>,
+> = () => TypedHookService<T, THooks>;
+```
 
 Factory function for creating services.
 

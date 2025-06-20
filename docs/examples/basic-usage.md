@@ -16,7 +16,7 @@ function App() {
   return (
     <HookProvider
       hooks={{
-        navigation: useNavigate,
+        navigate: useNavigate,
       }}
     >
       <MyComponent />
@@ -27,39 +27,50 @@ function App() {
 
 ```typescript
 // services/navigationService.ts
-import { useHookService } from 'react-use-anywhere';
+import { createSingletonService } from 'react-use-anywhere';
 
-export const navigationService = {
-  goHome() {
-    const navigate = useHookService('navigation');
+// Create a singleton service for navigation
+export const navigationService = createSingletonService('navigate');
+
+export const goHome = () => {
+  return navigationService.use((navigate) => {
     navigate('/');
-  },
+  });
+};
 
-  goToProfile(userId: string) {
-    const navigate = useHookService('navigation');
+export const goToProfile = (userId: string) => {
+  return navigationService.use((navigate) => {
     navigate(`/profile/${userId}`);
-  },
+  });
+};
 
-  goBack() {
-    const navigate = useHookService('navigation');
+export const goBack = () => {
+  return navigationService.use((navigate) => {
     navigate(-1);
-  },
+  });
 };
 ```
 
 ```tsx
 // components/MyComponent.tsx
 import React from 'react';
-import { navigationService } from '../services/navigationService';
+import { useHookService } from 'react-use-anywhere';
+import {
+  navigationService,
+  goHome,
+  goToProfile,
+  goBack,
+} from '../services/navigationService';
 
 export function MyComponent() {
+  // Connect the service to the hook - this is required!
+  useHookService(navigationService, 'navigate');
+
   return (
     <div>
-      <button onClick={() => navigationService.goHome()}>Go Home</button>
-      <button onClick={() => navigationService.goToProfile('123')}>
-        View Profile
-      </button>
-      <button onClick={() => navigationService.goBack()}>Go Back</button>
+      <button onClick={() => goHome()}>Go Home</button>
+      <button onClick={() => goToProfile('123')}>View Profile</button>
+      <button onClick={() => goBack()}>Go Back</button>
     </div>
   );
 }
@@ -67,7 +78,7 @@ export function MyComponent() {
 
 ## Multiple Hooks Example
 
-Using multiple hooks in a single service:
+Using multiple hooks in a single component:
 
 ```tsx
 // App.tsx
@@ -118,123 +129,223 @@ function App() {
 
 ```typescript
 // services/userService.ts
-import { useHookService } from 'react-use-anywhere';
+import { createSingletonService } from 'react-use-anywhere';
 
-export const userService = {
-  async login(email: string, password: string) {
-    const navigate = useHookService('navigation');
-    const { addNotification } = useHookService('notifications');
-    const { setUser } = useHookService('auth');
+// Create services for each hook
+export const navigationService = createSingletonService('navigation');
+export const notificationsService = createSingletonService('notifications');
+export const authService = createSingletonService('auth');
 
-    try {
-      // Simulate API call
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+export const login = async (email: string, password: string) => {
+  try {
+    // Simulate API call
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) {
-        throw new Error('Login failed');
-      }
-
-      const user = await response.json();
-
-      // Update auth state
-      setUser(user);
-
-      // Show success notification
-      addNotification('Welcome back!');
-
-      // Navigate to dashboard
-      navigate('/dashboard');
-    } catch (error) {
-      addNotification('Login failed. Please try again.');
-      console.error('Login error:', error);
+    if (!response.ok) {
+      throw new Error('Login failed');
     }
-  },
 
-  logout() {
-    const navigate = useHookService('navigation');
-    const { addNotification } = useHookService('notifications');
-    const { logout } = useHookService('auth');
+    const user = await response.json();
 
-    logout();
-    addNotification('You have been logged out');
-    navigate('/login');
-  },
+    // Update auth state
+    const authResult = authService.use((auth) => {
+      auth.setUser(user);
+      return user;
+    });
+
+    // Show success notification
+    notificationsService.use((notifications) => {
+      notifications.addNotification('Welcome back!');
+    });
+
+    // Navigate to dashboard
+    navigationService.use((navigate) => {
+      navigate('/dashboard');
+    });
+
+    return authResult;
+  } catch (error) {
+    notificationsService.use((notifications) => {
+      notifications.addNotification('Login failed. Please try again.');
+    });
+    console.error('Login error:', error);
+    throw error;
+  }
 };
+
+export const logout = () => {
+  authService.use((auth) => {
+    auth.logout();
+  });
+
+  notificationsService.use((notifications) => {
+    notifications.addNotification('You have been logged out');
+  });
+
+  navigationService.use((navigate) => {
+    navigate('/login');
+  });
+};
+```
+
+```tsx
+// components/UserManager.tsx - Connect all services
+import React from 'react';
+import { useHookService } from 'react-use-anywhere';
+import {
+  navigationService,
+  notificationsService,
+  authService,
+  login,
+  logout,
+} from '../services/userService';
+
+export function UserManager() {
+  // Connect all services to their respective hooks
+  useHookService(navigationService, 'navigation');
+  useHookService(notificationsService, 'notifications');
+  useHookService(authService, 'auth');
+
+  const handleLogin = () => {
+    login('user@example.com', 'password123');
+  };
+
+  return (
+    <div>
+      <button onClick={handleLogin}>Login</button>
+      <button onClick={logout}>Logout</button>
+    </div>
+  );
+}
 ```
 
 ## Async Operations
 
-Handling async operations with hooks:
+Handling async operations with services:
 
 ```typescript
 // services/dataService.ts
-import { useHookService } from 'react-use-anywhere';
+import { createSingletonService } from 'react-use-anywhere';
 
-export const dataService = {
-  async fetchUser(userId: string) {
-    const navigate = useHookService('navigation');
-    const { addNotification } = useHookService('notifications');
+export const navigationService = createSingletonService('navigation');
+export const notificationsService = createSingletonService('notifications');
 
-    try {
-      const response = await fetch(`/api/users/${userId}`);
+export const fetchUser = async (userId: string) => {
+  try {
+    const response = await fetch(`/api/users/${userId}`);
 
-      if (response.status === 404) {
-        addNotification('User not found');
-        navigate('/users');
-        return null;
-      }
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user');
-      }
-
-      const user = await response.json();
-      addNotification(`Loaded profile for ${user.name}`);
-
-      return user;
-    } catch (error) {
-      addNotification('Failed to load user data');
-      navigate('/error');
-      throw error;
-    }
-  },
-
-  async updateUser(userId: string, updates: Partial<User>) {
-    const { addNotification } = useHookService('notifications');
-    const { setUser } = useHookService('auth');
-
-    try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+    if (response.status === 404) {
+      // Handle not found
+      notificationsService.use((notifications) => {
+        notifications.addNotification('User not found');
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to update user');
-      }
+      navigationService.use((navigate) => {
+        navigate('/users');
+      });
 
-      const updatedUser = await response.json();
-
-      // Update auth state if it's the current user
-      const { user: currentUser } = useHookService('auth');
-      if (currentUser?.id === userId) {
-        setUser(updatedUser);
-      }
-
-      addNotification('Profile updated successfully');
-      return updatedUser;
-    } catch (error) {
-      addNotification('Failed to update profile');
-      throw error;
+      return null;
     }
-  },
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user');
+    }
+
+    const user = await response.json();
+
+    notificationsService.use((notifications) => {
+      notifications.addNotification(`Loaded profile for ${user.name}`);
+    });
+
+    return user;
+  } catch (error) {
+    notificationsService.use((notifications) => {
+      notifications.addNotification('Failed to load user data');
+    });
+
+    navigationService.use((navigate) => {
+      navigate('/error');
+    });
+
+    throw error;
+  }
+};
+
+export const updateUser = async (userId: string, updates: Partial<User>) => {
+  const authService = createSingletonService('auth');
+
+  try {
+    const response = await fetch(`/api/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update user');
+    }
+
+    const updatedUser = await response.json();
+
+    // Update auth state if it's the current user
+    authService.use((auth) => {
+      if (auth.user?.id === userId) {
+        auth.setUser(updatedUser);
+      }
+    });
+
+    notificationsService.use((notifications) => {
+      notifications.addNotification('Profile updated successfully');
+    });
+
+    return updatedUser;
+  } catch (error) {
+    notificationsService.use((notifications) => {
+      notifications.addNotification('Failed to update profile');
+    });
+    throw error;
+  }
 };
 ```
+
+```tsx
+// components/UserProfile.tsx - Connect the services
+import React from 'react';
+import { useHookService } from 'react-use-anywhere';
+import {
+  navigationService,
+  notificationsService,
+  fetchUser,
+  updateUser,
+} from '../services/dataService';
+
+export function UserProfile({ userId }: { userId: string }) {
+  // Connect services to hooks
+  useHookService(navigationService, 'navigation');
+  useHookService(notificationsService, 'notifications');
+
+  const handleLoadUser = () => {
+    fetchUser(userId);
+  };
+
+  const handleUpdateUser = () => {
+    updateUser(userId, { name: 'Updated Name' });
+  };
+
+  return (
+    <div>
+      <button onClick={handleLoadUser}>Load User</button>
+      <button onClick={handleUpdateUser}>Update User</button>
+    </div>
+  );
+}
+```
+
+````
 
 ## Error Handling
 
@@ -335,7 +446,7 @@ export const apiService = {
     return this.request(endpoint, { method: 'DELETE' });
   },
 };
-```
+````
 
 ## Service Composition
 

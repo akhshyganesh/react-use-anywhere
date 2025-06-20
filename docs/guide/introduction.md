@@ -31,20 +31,31 @@ function MyComponent({ navigate, setUser, setTheme }) {
 
 ```typescript
 // ✅ This works perfectly!
-export const authService = {
-  login: async (credentials) => {
-    const navigate = useHookService('navigation');
-    const { setUser } = useHookService('auth');
+import { createSingletonService } from 'react-use-anywhere';
 
+const navigationService = createSingletonService('navigate');
+const authService = createSingletonService('auth');
+
+export const authServiceModule = {
+  login: async (credentials) => {
     const user = await api.login(credentials);
-    setUser(user);
-    navigate('/dashboard'); // ✅ Navigate from service layer!
+
+    authService.use((auth) => {
+      auth.setUser(user);
+    });
+
+    navigationService.use((navigate) => {
+      navigate('/dashboard'); // ✅ Navigate from service layer!
+    });
   }
 };
 
 // ✅ Clean, focused components
 function MyComponent() {
-  // No prop drilling needed
+  // Connect services to hooks
+  useHookService(navigationService, 'navigate');
+  useHookService(authService, 'auth');
+
   return <SomeChild />;
 }
 ```

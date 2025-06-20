@@ -6,63 +6,124 @@ Advanced navigation patterns using React Use Anywhere for clean, service-driven 
 
 Works with any React router (React Router, Tanstack Router, Next.js, etc.):
 
-```typescript
+````typescript
 // services/navigationService.ts
-import { useHookService } from 'react-use-anywhere';
+import { createSingletonService } from 'react-use-anywhere';
 
-export const navigationService = {
+// Create singleton services for navigation and auth
+const navigationService = createSingletonService<NavigateFunction>('navigation');
+const authService = createSingletonService<AuthState>('auth');
+
+export const navService = {
   // Basic navigation
   goTo(path: string, options?: NavigateOptions) {
-    const navigate = useHookService('navigation');
-    navigate(path, options);
+    return navigationService.use((navigate) => {
+      navigate(path, options);
+    });
   },
 
   // Conditional navigation based on auth
   goToUserArea() {
-    const { isAuthenticated, user } = useHookService('auth');
-    const navigate = useHookService('navigation');
+    return authService.use((auth) => {
+      if (!auth.isAuthenticated) {
+        return navigationService.use((navigate) => {
+          navigate('/login');
+        });
+      }
 
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
-    // Navigate based on user role
-    if (user.role === 'admin') {
-      navigate('/admin/dashboard');
-    } else {
-      navigate('/dashboard');
-    }
+      // Navigate based on user role
+      const targetPath = auth.user?.role === 'admin' ? '/admin/dashboard' : '/dashboard';
+      return navigationService.use((navigate) => {
+        navigate(targetPath);
+      });
+    });
   },
 
   // Navigation with state
   goToWithState(path: string, state: any) {
-    const navigate = useHookService('navigation');
-    navigate(path, { state });
+    return navigationService.use((navigate) => {
+      navigate(path, { state });
+    });
   },
 
   // Replace current route
   replace(path: string) {
-    const navigate = useHookService('navigation');
-    navigate(path, { replace: true });
+    return navigationService.use((navigate) => {
+      navigate(path, { replace: true });
+    });
   },
 
   // Go back
   goBack() {
-    const navigate = useHookService('navigation');
-    navigate(-1);
+    return navigationService.use((navigate) => {
+      navigate(-1);  // React Router pattern
+    });
   },
 
   // Go forward
   goForward() {
-    const navigate = useHookService('navigation');
-    navigate(1);
+    return navigationService.use((navigate) => {
+      navigate(1);  // React Router pattern
+    });
   },
 
   // External navigation
   goToExternal(url: string) {
     window.open(url, '_blank', 'noopener,noreferrer');
   },
+};
+  goBack() {
+    const navigate = useHookService('navigation');
+    navigate(-1);
+  },
+
+## Complete Setup with HookProvider
+
+```typescript
+// App.tsx
+import React from 'react';
+import { HookProvider } from 'react-use-anywhere';
+import { useNavigate } from 'react-router-dom';
+import { NavigationManager } from './components/NavigationManager';
+
+// Define the hook types
+type AppHooks = {
+  navigation: () => NavigateFunction;
+  auth: () => AuthState;
+};
+
+function App() {
+  return (
+    <HookProvider<AppHooks>
+      hooks={{
+        navigation: useNavigate,
+        auth: useAuth,
+      }}
+    >
+      <NavigationManager>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </NavigationManager>
+    </HookProvider>
+  );
+}
+````
+
+```typescript
+// components/NavigationManager.tsx
+import React from 'react';
+import { useHookService } from 'react-use-anywhere';
+import { navService } from '../services/navigationService';
+
+export const NavigationManager: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Connect the services to the hooks
+  useHookService(navigationService, 'navigation');
+  useHookService(authService, 'auth');
+
+  return <>{children}</>;
 };
 ```
 
@@ -72,13 +133,16 @@ Automatic breadcrumb management:
 
 ```typescript
 // services/breadcrumbService.ts
-import { useHookService } from 'react-use-anywhere';
+import { createSingletonService } from 'react-use-anywhere';
 
 export interface Breadcrumb {
   label: string;
   path: string;
   isActive?: boolean;
 }
+
+const navigationService =
+  createSingletonService<NavigateFunction>('navigation');
 
 export const breadcrumbService = {
   generateBreadcrumbs(currentPath: string): Breadcrumb[] {
@@ -107,19 +171,13 @@ export const breadcrumbService = {
   },
 
   navigateToBreadcrumb(breadcrumb: Breadcrumb) {
-    const navigate = useHookService('navigation');
-    navigate(breadcrumb.path);
+    return navigationService.use((navigate) => {
+      navigate(breadcrumb.path);
+    });
   },
 
-  updateBreadcrumbLabel(path: string, newLabel: string) {
-    const { setBreadcrumbs } = useHookService('breadcrumbs');
-    const currentBreadcrumbs = this.generateBreadcrumbs(path);
-
-    const updatedBreadcrumbs = currentBreadcrumbs.map((crumb) =>
-      crumb.path === path ? { ...crumb, label: newLabel } : crumb
-    );
-
-    setBreadcrumbs(updatedBreadcrumbs);
+  getCurrentBreadcrumbs(currentPath: string) {
+    return this.generateBreadcrumbs(currentPath);
   },
 };
 ```

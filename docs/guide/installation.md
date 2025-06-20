@@ -43,14 +43,6 @@ console.log('HookProvider:', typeof HookProvider);
 console.log('useHookService:', typeof useHookService);
 ```
 
-Run the test:
-
-```bash
-npx tsx test-installation.ts
-# or
-node -r esbuild-register test-installation.ts
-```
-
 ## TypeScript Configuration
 
 If you're using TypeScript, ensure your `tsconfig.json` includes:

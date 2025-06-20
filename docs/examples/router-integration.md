@@ -4,50 +4,55 @@ Learn how to integrate react-use-anywhere with popular routing libraries.
 
 ## Overview
 
-This example shows how to create router-agnostic navigation services that work with React Router, Next.js Router, Reach Router, or any other routing solution.
+This example shows how to create router-agnostic navigation hooks that work with React Router, Next.js Router, or any other routing solution using the HookProvider pattern.
 
 ## React Router Integration
 
-### 1. Create Navigation Service for React Router
+### 1. Create Navigation Hook for React Router
 
 ```typescript
-// services/navigationService.ts
+// hooks/useNavigation.ts
+import { useNavigate, useLocation } from 'react-router-dom';
 import { NavigateFunction, Location } from 'react-router-dom';
 
-export interface NavigationService {
-  navigate: (to: string, options?: { replace?: boolean; state?: any }) => void;
+export interface NavigationState {
+  navigate: NavigateFunction;
+  location: Location;
   goBack: () => void;
   goForward: () => void;
   getCurrentPath: () => string;
-  getCurrentLocation: () => Location | null;
   isCurrentPath: (path: string) => boolean;
-  buildUrl: (path: string, params?: Record<string, string>) => string;
 }
 
-export const createReactRouterNavigationService = (): NavigationService => {
-  let navigateFunction: NavigateFunction | null = null;
-  let currentLocation: Location | null = null;
-
-  const setNavigateFunction = (navigate: NavigateFunction) => {
-    navigateFunction = navigate;
-  };
-
-  const setCurrentLocation = (location: Location) => {
-    currentLocation = location;
-  };
-
-  const navigate = (
-    to: string,
-    options?: { replace?: boolean; state?: any }
-  ) => {
-    if (!navigateFunction) {
-      console.warn('Navigation function not initialized');
-      return;
-    }
-    navigateFunction(to, options);
-  };
+export const useNavigation = (): NavigationState => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const goBack = () => {
+    navigate(-1);
+  };
+
+  const goForward = () => {
+    navigate(1);
+  };
+
+  const getCurrentPath = (): string => {
+    return location.pathname;
+  };
+
+  const isCurrentPath = (path: string): boolean => {
+    return location.pathname === path;
+  };
+
+  return {
+    navigate,
+    location,
+    goBack,
+    goForward,
+    getCurrentPath,
+    isCurrentPath,
+  };
+};
     if (!navigateFunction) return;
     navigateFunction(-1);
   };
