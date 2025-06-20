@@ -1,0 +1,11 @@
+.vitepress/
+node_modules/
+dist/
+*.log
+*.env
+*.DS_Store
+*.swp
+*.swo
+*.bak
+*.tmp
+*.cache
