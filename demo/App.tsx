@@ -18,7 +18,7 @@ const useAuth = () => {
   
   return {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated: Boolean(user),
     login: (name: string, email: string) => {
       setUser({ name, email });
       console.log('User logged in:', { name, email });

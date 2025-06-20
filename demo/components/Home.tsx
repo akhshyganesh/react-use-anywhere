@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHookService, useHook } from '../../lib';
 import { navigationService, goToLogin } from '../services/navigationService';
 import { authService, simulateTokenExpiry, getCurrentUser } from '../services/authService';
 import { themeService, toggleTheme, applyThemeToBody } from '../services/themeService';
+import { logger, logContextUpdate, logDataSync } from '../services/logger';
+import { DebugPanel } from './DebugPanel';
 
 export const Home: React.FC = () => {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [buttonStates, setButtonStates] = useState<Record<string, boolean>>({});
+
   // Connect services to hook values - this makes the hooks available in service files
   useHookService(navigationService, 'navigation');
   useHookService(authService, 'auth');
@@ -14,27 +19,78 @@ export const Home: React.FC = () => {
   const auth = useHook<{ user: any; isAuthenticated: boolean }>('auth');
   const theme = useHook<{ theme: string; isDark: boolean }>('theme');
 
+  // Subscribe to logger updates
+  useEffect(() => {
+    return logger.subscribe((newLogs) => {
+      setLogs(newLogs);
+    });
+  }, []);
+
+  // Log context updates when hook values change
+  useEffect(() => {
+    if (auth) {
+      logContextUpdate('auth', { user: auth.user, isAuthenticated: auth.isAuthenticated });
+      logDataSync('authService', 'context→service', auth);
+    }
+  }, [auth]);
+
+  useEffect(() => {
+    if (theme) {
+      logContextUpdate('theme', { theme: theme.theme, isDark: theme.isDark });
+      logDataSync('themeService', 'context→service', theme);
+    }
+  }, [theme]);
+
   // Apply theme to body when component mounts or theme changes
   React.useEffect(() => {
     applyThemeToBody();
   }, [theme?.theme]);
 
+  // Helper function to show visual feedback for button clicks
+  const animateButton = (buttonId: string) => {
+    setButtonStates(prev => ({ ...prev, [buttonId]: true }));
+    setTimeout(() => {
+      setButtonStates(prev => ({ ...prev, [buttonId]: false }));
+    }, 300);
+  };
+
   const handleTokenExpiry = () => {
+    animateButton('tokenExpiry');
     simulateTokenExpiry();
   };
 
   const handleThemeToggle = () => {
+    animateButton('themeToggle');
     toggleTheme();
   };
 
   const handleShowUser = () => {
+    animateButton('showUser');
     const user = getCurrentUser();
     alert(`Current user: ${user?.name || 'None'} (${user?.email || 'N/A'})`);
   };
 
   const handleGoToLogin = () => {
+    animateButton('goToLogin');
     goToLogin();
   };
+
+  const clearLogs = () => {
+    logger.clear();
+  };
+
+  const getButtonStyle = (buttonId: string, baseColor: string) => ({
+    padding: '0.5rem 1rem',
+    cursor: 'pointer',
+    backgroundColor: buttonStates[buttonId] ? '#ffd700' : baseColor,
+    color: buttonStates[buttonId] ? '#000' : '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    transform: buttonStates[buttonId] ? 'scale(1.05)' : 'scale(1)',
+    transition: 'all 0.3s ease',
+    position: 'relative' as const,
+    overflow: 'hidden' as const
+  });
 
   return (
     <div className="container" style={{ 
@@ -53,44 +109,91 @@ export const Home: React.FC = () => {
         <p><strong>User:</strong> {auth?.isAuthenticated ? auth.user?.name : 'Not logged in'}</p>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
         <button 
           onClick={handleThemeToggle}
-          style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}
+          style={getButtonStyle('themeToggle', '#28a745')}
         >
-          Toggle Theme (from service)
+          🎨 Toggle Theme (from service)
+          {buttonStates.themeToggle && (
+            <span style={{ 
+              position: 'absolute', 
+              top: 0, 
+              right: 0, 
+              fontSize: '0.8rem',
+              animation: 'pulse 0.3s ease-in-out'
+            }}>
+              ✨
+            </span>
+          )}
         </button>
         
         <button 
           onClick={handleShowUser}
-          style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}
+          style={getButtonStyle('showUser', '#007bff')}
         >
-          Get User (from service)
+          👤 Get User (from service)
+          {buttonStates.showUser && (
+            <span style={{ 
+              position: 'absolute', 
+              top: 0, 
+              right: 0, 
+              fontSize: '0.8rem'
+            }}>
+              🔍
+            </span>
+          )}
         </button>
         
         <button 
           onClick={handleTokenExpiry}
-          style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}
+          style={getButtonStyle('tokenExpiry', '#dc3545')}
         >
-          Simulate Token Expiry
+          ⏰ Simulate Token Expiry
+          {buttonStates.tokenExpiry && (
+            <span style={{ 
+              position: 'absolute', 
+              top: 0, 
+              right: 0, 
+              fontSize: '0.8rem'
+            }}>
+              💥
+            </span>
+          )}
         </button>
         
         <button 
           onClick={handleGoToLogin}
-          style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}
+          style={getButtonStyle('goToLogin', '#6c757d')}
         >
-          Go to Login (from service)
+          🚪 Go to Login (from service)
+          {buttonStates.goToLogin && (
+            <span style={{ 
+              position: 'absolute', 
+              top: 0, 
+              right: 0, 
+              fontSize: '0.8rem'
+            }}>
+              🏃‍♂️
+            </span>
+          )}
         </button>
       </div>
+
+      <DebugPanel logs={logs} onClear={clearLogs} />
 
       <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: theme?.isDark ? '#444' : '#f5f5f5', borderRadius: '8px' }}>
         <h3>✨ How it works:</h3>
         <ol style={{ textAlign: 'start' }}>
           <li><strong>Wrap your app</strong> with <code>HookProvider</code> and pass your hooks</li>
-          <li><strong>Create services</strong> using <code>createSingletonService()</code></li>
+          <li><strong>Create singleton services</strong> using <code>createSingletonService()</code> (recommended)</li>
           <li><strong>Connect services</strong> using <code>useHookService()</code> in React components</li>
           <li><strong>Use anywhere</strong> - call service methods from any file, even non-React files!</li>
         </ol>
+        
+        <div style={{ marginTop: '1rem', padding: '0.5rem', backgroundColor: theme?.isDark ? '#555' : '#e9ecef', borderRadius: '4px' }}>
+          <strong>🔍 Watch the Debug Panel:</strong> Click any button to see the service call flow and context synchronization in real-time!
+        </div>
       </div>
     </div>
   );

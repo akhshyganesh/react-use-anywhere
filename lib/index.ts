@@ -1,13 +1,15 @@
 // Provider component to wrap your app
 export { HookProvider, useHookContext } from './providers/HookInjectionProvider';
 
-// Create services to use hooks anywhere
+// 🚀 RECOMMENDED: Create singleton services (standard approach)
 export { 
-  createHookService, 
-  createSingletonService, 
+  createSingletonService,
   getSingletonService, 
   resetAllServices 
 } from './services/createHookService';
+
+// ⚠️ ADVANCED: Only use if you need multiple independent instances
+export { createHookService } from './services/createHookService';
 
 // Connect services to hooks in React components
 export { useHookService, useHook, useAllHooks } from './hooks/useHookService';

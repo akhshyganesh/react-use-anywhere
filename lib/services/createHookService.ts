@@ -2,7 +2,13 @@ import type { HookService } from '../types';
 
 /**
  * Creates a service that can store and use hook values from anywhere in your code
- * This is the main function to create services for your hooks
+ * 
+ * ⚠️ RECOMMENDATION: Use `createSingletonService` instead for better performance and state consistency
+ * 
+ * This creates a NEW instance every time it's called. For most React applications,
+ * you want shared state across components, so use `createSingletonService` instead.
+ * 
+ * Only use this if you specifically need multiple independent instances.
  */
 export function createHookService<T = any>(): HookService<T> {
   let value: T | null = null;
@@ -32,8 +38,9 @@ export function createHookService<T = any>(): HookService<T> {
         return null;
       }
 
+      // Allow null/undefined values when service is ready
       try {
-        return callback(value);
+        return callback(value as T);
       } catch (error) {
         console.error('Error using hook service:', error);
         return null;
@@ -52,7 +59,16 @@ export function createHookService<T = any>(): HookService<T> {
 const singletonServices = new Map<string, HookService<any>>();
 
 /**
- * Create or get a singleton service - useful when you want to share the same service across your app
+ * 🚀 RECOMMENDED: Create or get a singleton service
+ * 
+ * This is the standard way to create services in react-use-anywhere.
+ * Benefits:
+ * - ✅ Shared state across your entire app
+ * - ✅ Better performance (no duplicate instances)
+ * - ✅ Consistent behavior across components
+ * - ✅ Memory efficient
+ * 
+ * @param serviceId - Unique identifier for the service
  */
 export function createSingletonService<T = any>(serviceId: string): HookService<T> {
   if (!singletonServices.has(serviceId)) {

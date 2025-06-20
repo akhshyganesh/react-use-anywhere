@@ -17,6 +17,7 @@ export const HookProvider: React.FC<HookProviderProps> = ({ children, hooks }) =
       hookValues[name] = hook();
     } catch (error) {
       console.warn(`Failed to execute hook "${name}":`, error);
+      hookValues[name] = undefined; // Fallback to undefined if hook fails
     }
   });
 

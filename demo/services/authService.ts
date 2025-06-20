@@ -1,5 +1,6 @@
 import { createSingletonService } from '../../lib';
 import { goToLogin } from './navigationService';
+import { logServiceCall } from './logger';
 
 // Define the auth hook type
 type AuthHook = {
@@ -9,13 +10,18 @@ type AuthHook = {
   logout: () => void;
 };
 
-// Create a service to use auth hook anywhere
+// 🚀 STANDARD: Create a singleton service to use auth hook anywhere
 export const authService = createSingletonService<AuthHook>('auth');
 
 // Helper functions you can use in any file
 export const checkAuth = () => {
+  logServiceCall('authService', 'checkAuth');
+  
   return authService.use((auth) => {
-    if (!auth.isAuthenticated) {
+    const isAuthenticated = auth.isAuthenticated;
+    logServiceCall('authService', 'checkAuth.result', { isAuthenticated, user: auth.user });
+    
+    if (!isAuthenticated) {
       console.log('User not authenticated, redirecting to login...');
       goToLogin();
       return false;
@@ -25,13 +31,21 @@ export const checkAuth = () => {
 };
 
 export const getCurrentUser = () => {
-  return authService.use((auth) => auth.user);
+  logServiceCall('authService', 'getCurrentUser');
+  
+  return authService.use((auth) => {
+    logServiceCall('authService', 'getCurrentUser.result', { user: auth.user });
+    return auth.user;
+  });
 };
 
 export const simulateTokenExpiry = () => {
+  logServiceCall('authService', 'simulateTokenExpiry');
   console.log('Simulating token expiry...');
+  
   authService.use((auth) => {
     auth.logout();
+    logServiceCall('authService', 'logout.fromTokenExpiry', { reason: 'token_expired' });
     console.log('User logged out due to token expiry');
   });
   

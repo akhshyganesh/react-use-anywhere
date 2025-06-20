@@ -48,15 +48,26 @@ function App() {
 ### 2. Create services for your hooks
 
 ```tsx
-import { createHookService } from 'react-use-anywhere';
+import { createSingletonService } from 'react-use-anywhere';
 
-// Create individual services
-export const navigationService = createHookService();
-export const authService = createHookService();
-
-// Or use singletons (recommended for shared services)
+// 🚀 RECOMMENDED: Use singleton services (standard approach)
+export const navigationService = createSingletonService('navigation');
+export const authService = createSingletonService('auth');
 export const themeService = createSingletonService('theme');
+
+// ⚠️ AVOID: Creates new instances (use only for special cases)
+// export const navigationService = createHookService();
 ```
+
+**Why use singleton services?**
+
+Singleton services are the **recommended and optimized approach** for react-use-anywhere:
+
+- **✅ Shared State**: All components share the same service instance, ensuring data synchronization
+- **✅ Better Performance**: One instance per service instead of multiple instances
+- **✅ Memory Efficient**: Prevents memory leaks from creating duplicate services
+- **✅ Consistent Behavior**: State changes are immediately reflected across your entire app
+- **✅ Simpler Testing**: Easier to mock and test with predictable service instances
 
 ### 3. Connect services to hooks in React components
 
@@ -222,20 +233,31 @@ Provider component that makes hooks available to services throughout your app.
 </HookProvider>
 ```
 
-### `createHookService<T>()`
-Creates a new service that can store and use hook values anywhere in your code.
+### `createSingletonService<T>(serviceId)` ⭐ **Recommended**
+Creates or returns an existing singleton service. This is the **standard approach** for react-use-anywhere.
 
 ```tsx
-const navigationService = createHookService<(path: string) => void>();
-const authService = createHookService<AuthHookType>();
+// Standard usage - creates or returns existing service
+const authService = createSingletonService<AuthHookType>('auth');
+const themeService = createSingletonService<ThemeHookType>('theme');
+
+// Calling again with same ID returns the SAME instance
+const authService2 = createSingletonService<AuthHookType>('auth');
+console.log(authService === authService2); // true ✅
 ```
 
-### `createSingletonService<T>(serviceId)`
-Creates or returns an existing singleton service. Perfect for services you want to share across your entire app.
+### `createHookService<T>()` ⚠️ **Advanced Use Only**
+Creates a new service instance every time. Only use this if you specifically need multiple independent instances.
 
 ```tsx
-const themeService = createSingletonService<ThemeHookType>('theme');
-const authService = createSingletonService<AuthHookType>('auth');
+// Creates NEW instances each time
+const service1 = createHookService<AuthHookType>();
+const service2 = createHookService<AuthHookType>();
+console.log(service1 === service2); // false - different instances!
+
+// Use case: Multiple independent forms or isolated components
+const loginFormService = createHookService<FormHookType>();
+const signupFormService = createHookService<FormHookType>();
 ```
 
 ### `useHookService(service, hookName)`
@@ -386,51 +408,28 @@ describe('My Business Logic', () => {
 
 ## 🎯 Best Practices
 
-### 1. Use Singleton Services for Shared State
+### 1. Always Use Singleton Services (Standard Approach)
 ```tsx
-// ✅ Good - shared across your entire app
-export const authService = createSingletonService('auth');
-export const themeService = createSingletonService('theme');
-
-// ❌ Avoid - creates new instances every time
-export const getAuthService = () => createHookService();
-```
-
-**Why use singletons?**
-
-- **State consistency**: All components share the same state instance, ensuring data synchronization across your app
-- **Performance**: Avoids creating multiple service instances, reducing memory usage and preventing unnecessary re-renders
-- **Predictable behavior**: State updates in one component are immediately reflected in all other components using the same service
-- **Memory efficiency**: One instance per service type instead of potentially dozens of instances
-
-**What happens without singletons?**
-```typescript
-// This creates a NEW service instance every time it's called
-const Component1 = () => {
-  const auth = getAuthService(); // Instance A
-  // ...
-};
-
-const Component2 = () => {
-  const auth = getAuthService(); // Instance B (different from A!)
-  // Changes in Component1 won't be seen in Component2
-};
-```
-
-With singletons, both components share the same instance and state.
-
-### 2. Define Clear Hook Types
-
-```tsx
-// ✅ Good - clear TypeScript types
-type AuthHook = {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
-};
-
+// ✅ RECOMMENDED - Standard approach
 export const authService = createSingletonService<AuthHook>('auth');
+export const themeService = createSingletonService<ThemeHook>('theme');
+export const navigationService = createSingletonService<NavigationHook>('navigation');
+
+// ❌ AVOID - Creates new instances, causes state inconsistency
+export const getAuthService = () => createHookService();
+export const authService = createHookService(); // New instance each import
+```
+
+### 2. Use Consistent Service IDs
+```tsx
+// ✅ Good - clear, consistent naming
+const authService = createSingletonService<AuthHook>('auth');
+const userService = createSingletonService<UserHook>('user');
+const themeService = createSingletonService<ThemeHook>('theme');
+
+// ❌ Avoid - inconsistent or unclear IDs
+const authService = createSingletonService<AuthHook>('myAuthThing');
+const userService = createSingletonService<UserHook>('userData123');
 ```
 
 ### 3. Organize Services by Domain
@@ -529,4 +528,5 @@ const result = myService.use((hookValue) => {
 
 ## 📄 License
 
+MIT © [akhshyganesh](https://github.com/akhshyganesh)
 MIT © [akhshyganesh](https://github.com/akhshyganesh)

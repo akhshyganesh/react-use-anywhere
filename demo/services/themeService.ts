@@ -1,4 +1,5 @@
 import { createSingletonService } from '../../lib';
+import { logServiceCall } from './logger';
 
 // Define the theme hook type
 type ThemeHook = {
@@ -7,23 +8,40 @@ type ThemeHook = {
   toggle: () => void;
 };
 
-// Create a service to use theme hook anywhere
+// 🚀 STANDARD: Create a singleton service to use theme hook anywhere
 export const themeService = createSingletonService<ThemeHook>('theme');
 
 // Helper functions you can use in any file
 export const toggleTheme = () => {
-  themeService.use((theme) => {
+  logServiceCall('themeService', 'toggleTheme');
+  
+  const result = themeService.use((theme) => {
     theme.toggle();
+    logServiceCall('themeService', 'toggle', { newTheme: theme.theme });
     console.log('Theme toggled from service');
+    return theme.theme;
   });
+  
+  return result;
 };
 
 export const getCurrentTheme = () => {
-  return themeService.use((theme) => theme.theme);
+  logServiceCall('themeService', 'getCurrentTheme');
+  
+  return themeService.use((theme) => {
+    logServiceCall('themeService', 'getCurrentTheme.result', { theme: theme.theme });
+    return theme.theme;
+  });
 };
 
 export const applyThemeToBody = () => {
+  logServiceCall('themeService', 'applyThemeToBody');
+  
   themeService.use((theme) => {
     document.body.className = theme.isDark ? 'dark-theme' : 'light-theme';
+    logServiceCall('themeService', 'applyThemeToBody.applied', { 
+      className: document.body.className,
+      isDark: theme.isDark 
+    });
   });
 };

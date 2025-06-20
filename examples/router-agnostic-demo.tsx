@@ -8,7 +8,7 @@
 import React, { useState } from 'react';
 import { 
   HookInjectionProvider, 
-  createHookService, 
+  createSingletonService, 
   useHookInjection, 
   useHookFromContext 
 } from 'react-use-anywhere';
@@ -98,45 +98,33 @@ const useApiData = () => {
 };
 
 // =============================================================================
-// 3. SERVICES USING GENERIC HOOK INJECTION
+// 3. SERVICES USING STANDARD SINGLETON PATTERN 🚀
 // =============================================================================
 
-// Generic services that can work with any hook
-export const navigationService = createHookService<(path: string, options?: any) => void>({
-  enableWarnings: true,
-  fallbackBehavior: 'warn',
-});
+// Standard approach - using singleton services for shared state
+export const navigationService = createSingletonService<(path: string, options?: any) => void>('navigation');
 
-export const authService = createHookService<{
+export const authService = createSingletonService<{
   user: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string) => Promise<void>;
   logout: () => void;
-}>({
-  enableWarnings: true,
-  fallbackBehavior: 'warn',
-});
+}>('auth');
 
-export const themeService = createHookService<{
+export const themeService = createSingletonService<{
   theme: 'light' | 'dark';
   isDark: boolean;
   toggleTheme: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
-}>({
-  enableWarnings: true,
-  fallbackBehavior: 'warn',
-});
+}>('theme');
 
-export const apiService = createHookService<{
+export const apiService = createSingletonService<{
   data: any;
   loading: boolean;
   error: string | null;
   fetchData: (url: string) => Promise<void>;
-}>({
-  enableWarnings: true,
-  fallbackBehavior: 'warn',
-});
+}>('api');
 
 // =============================================================================
 // 4. BUSINESS LOGIC USING SERVICES (ROUTER-AGNOSTIC)
@@ -325,6 +313,18 @@ function MyApp({ Component, pageProps }) {
   
   return (
     <HookInjectionProvider hooks={{ navigation: () => router.push, auth: useAuth }}>
+      <Component {...pageProps} />
+    </HookInjectionProvider>
+  );
+}
+
+// Remix
+import { useNavigate } from '@remix-run/react';
+
+<HookInjectionProvider hooks={{ navigation: useNavigate, auth: useAuth }}>
+  <Outlet />
+</HookInjectionProvider>
+*/
       <Component {...pageProps} />
     </HookInjectionProvider>
   );
