@@ -184,7 +184,12 @@ describe('Hook service with real React hooks', () => {
       return { count, increment: () => setCount((c) => c + 1) };
     };
 
-    const service = createHookService();
+    interface CounterHook {
+      count: number;
+      increment: () => void;
+    }
+
+    const service = createHookService<CounterHook>();
 
     const TestApp = () => {
       useHookService(service, 'counter');

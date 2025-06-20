@@ -35,13 +35,14 @@ const useAuth = (): AuthState => {
 };
 
 const mockNavigate = jest.fn();
-const useNavigation = () => mockNavigate;
+const useNavigation = (): ((path: string) => void) => mockNavigate;
 
 // Business logic functions using services
 const handleLogin = (credentials: UserData) => {
   return authService.use((auth) => {
-    if (auth) {
-      auth.login(credentials);
+    const authState = auth as AuthState | null;
+    if (authState) {
+      authState.login(credentials);
       return true;
     }
     return false;
@@ -49,8 +50,11 @@ const handleLogin = (credentials: UserData) => {
 };
 
 const handleLogout = () => {
-  authService.use((auth) => auth?.logout());
-  navigationService.use((navigate) => navigate?.('/login'));
+  authService.use((auth) => (auth as AuthState | null)?.logout());
+  navigationService.use((navigate) => {
+    const navigateFn = navigate as ((path: string) => void) | null;
+    if (navigateFn) navigateFn('/login');
+  });
 };
 
 // Component that connects services to hooks
@@ -104,7 +108,9 @@ describe('Integration Tests', () => {
     render(<TestApp />);
 
     // Initially not authenticated
-    expect(authService.use((auth) => auth?.isAuthenticated)).toBe(false);
+    expect(
+      authService.use((auth) => (auth as AuthState | null)?.isAuthenticated)
+    ).toBe(false);
 
     // Click login
     act(() => {
@@ -112,10 +118,14 @@ describe('Integration Tests', () => {
     });
 
     // Should be authenticated now
-    expect(authService.use((auth) => auth?.isAuthenticated)).toBe(true);
-    expect(authService.use((auth) => auth?.user)).toEqual({
-      username: 'testuser',
-    });
+    expect(
+      authService.use((auth) => (auth as AuthState | null)?.isAuthenticated)
+    ).toBe(true);
+    expect(authService.use((auth) => (auth as AuthState | null)?.user)).toEqual(
+      {
+        username: 'testuser',
+      }
+    );
     expect(screen.getByTestId('login-result')).toHaveTextContent('true');
   });
 
@@ -127,7 +137,9 @@ describe('Integration Tests', () => {
       fireEvent.click(screen.getByTestId('login-btn'));
     });
 
-    expect(authService.use((auth) => auth?.isAuthenticated)).toBe(true);
+    expect(
+      authService.use((auth) => (auth as AuthState | null)?.isAuthenticated)
+    ).toBe(true);
 
     // Then logout
     act(() => {
@@ -135,7 +147,9 @@ describe('Integration Tests', () => {
     });
 
     // Should be logged out and navigation called
-    expect(authService.use((auth) => auth?.isAuthenticated)).toBe(false);
+    expect(
+      authService.use((auth) => (auth as AuthState | null)?.isAuthenticated)
+    ).toBe(false);
     expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
 
