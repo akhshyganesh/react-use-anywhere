@@ -1,114 +1,136 @@
-import { ReactNode } from 'react';
+import React from 'react';
+
+// Core hook type - represents any React hook function
+export type ReactHook<T = unknown> = () => T;
 
 /**
- * Generic hook function type - can be any function returned by a hook
+ * Context that holds all registered hooks
  */
-export type HookFunction<T = any> = T;
-
-/**
- * Generic hook type - any React hook that returns a value
- */
-export type ReactHook<T = any> = () => T;
-
-/**
- * Legacy navigation function type for backwards compatibility
- * @deprecated Use HookFunction<NavigationFunction> instead
- */
-export type NavigationFunction = (path: string, options?: any) => void;
-
-/**
- * Legacy navigation hook type for backwards compatibility
- * @deprecated Use ReactHook<NavigationFunction> instead
- */
-export type NavigationHook = () => NavigationFunction;
-
-/**
- * Context type for hook injection - supports any number of hooks
- */
-export interface HookInjectionContext {
-  [hookName: string]: any;
+export interface HookContext {
+  [hookName: string]: unknown;
 }
 
 /**
- * Props for the HookInjectionProvider component
+ * Props for the HookProvider component
  */
-export interface HookInjectionProviderProps {
-  children: ReactNode;
-  hooks?: Record<string, ReactHook<any>>;
-  // Legacy support for navigationHook
-  navigationHook?: NavigationHook;
-  // Legacy support for customHooks
-  customHooks?: Record<string, any>;
+export interface HookProviderProps<
+  T extends Record<string, ReactHook<unknown>> = Record<
+    string,
+    ReactHook<unknown>
+  >,
+> {
+  children: React.ReactNode;
+  hooks: T;
 }
 
 /**
- * Generic service interface that can work with any hook
+ * Service interface for managing hook values
  */
-export interface HookServiceInterface<T = any> {
-  setHook(hook: T): void;
-  getHook(): T | null;
+export interface HookService<T = unknown> {
+  // Internal method used by useHookService
+  _setValue(newValue: T): void;
+  // Get the current hook value
+  get(): T | null;
+  // Check if the hook value is available
   isReady(): boolean;
-  execute<R = any>(callback: (hook: T) => R): R | null;
-  reset?(): void;
+  // Use the hook value in a callback
+  use<R = unknown>(callback: (value: T) => R): R | null;
+  // Reset the service (for testing)
+  _reset(): void;
 }
 
 /**
- * Legacy interface for navigation service (backwards compatibility)
- * @deprecated Use HookServiceInterface<NavigationFunction> instead
+ * Global hook registry to track registered hooks
  */
-export interface NavigationServiceInterface {
-  navigate(path: string, options?: any): void;
-  navigateToLogin?(loginPath?: string): void;
-  navigateToHome?(homePath?: string): void;
-  navigateToError?(errorPath?: string, state?: any): void;
-  setNavigate?(fn: NavigationFunction): void;
-  goBack?(): void;
-  goForward?(): void;
-  replace?(path: string, options?: any): void;
-  reset?(): void;
-  isReady(): boolean;
+export interface HookRegistry {
+  [key: string]: ReactHook<unknown>;
 }
 
 /**
- * Interface for generic hook injection service
+ * Type to extract hook names from a hooks object
  */
-export interface HookInjectionServiceInterface<T = any> {
-  setHook(hook: T): void;
-  getHook(): T | null;
-  isReady(): boolean;
-  execute<R = any>(callback: (hook: T) => R): R | null;
+export type HookNames<T extends Record<string, ReactHook<unknown>>> = keyof T;
+
+/**
+ * Type to extract the return type of a hook by name
+ */
+export type HookReturnType<
+  T extends Record<string, ReactHook<unknown>>,
+  K extends keyof T,
+> = T[K] extends ReactHook<infer R> ? R : never;
+
+/**
+ * Branded type for validated hook names - prevents accidental string usage
+ */
+export type ValidatedHookName<T extends Record<string, ReactHook<unknown>>> =
+  keyof T & string;
+
+/**
+ * Type-safe service interface that knows about valid hook names
+ */
+export interface TypedHookService<
+  T = unknown,
+  THooks extends Record<string, ReactHook<unknown>> = Record<
+    string,
+    ReactHook<unknown>
+  >,
+> extends HookService<T> {
+  readonly _hookNames?: THooks; // Phantom property for type information
 }
 
 /**
- * Configuration options for creating services
+ * Provider props with better type inference
  */
-export interface ServiceConfig {
-  enableWarnings?: boolean;
-  fallbackBehavior?: 'warn' | 'error' | 'silent';
-  timeout?: number;
+export interface TypedHookProviderProps<
+  T extends Record<string, ReactHook<unknown>>,
+> {
+  children: React.ReactNode;
+  hooks: T;
 }
 
 /**
- * Hook injection service factory options
+ * Utility types for extracting hook return types
  */
-export interface HookInjectionServiceOptions<T = any> extends ServiceConfig {
-  initialValue?: T;
-  validator?: (hook: T) => boolean;
-}
+export type ExtractHookType<T> = T extends ReactHook<infer R> ? R : never;
+
+export type HookReturnTypes<T extends Record<string, ReactHook<unknown>>> = {
+  [K in keyof T]: ExtractHookType<T[K]>;
+};
 
 /**
- * Generic hook service factory options
+ * Service factory types
  */
-export interface HookServiceOptions<T = any> extends ServiceConfig {
-  initialValue?: T;
-  validator?: (hook: T) => boolean;
-}
+export type ServiceFactory<T> = () => HookService<T>;
+export type TypedServiceFactory<
+  T,
+  THooks extends Record<string, ReactHook<unknown>>,
+> = () => TypedHookService<T, THooks>;
 
 /**
- * Legacy navigation service factory options (backwards compatibility)
- * @deprecated Use HookServiceOptions instead
+ * Common hook value types for better type safety
  */
-export interface NavigationServiceOptions extends ServiceConfig {
-  enableBrowserNavigation?: boolean;
-  baseUrl?: string;
+export interface AuthHookValue {
+  user: Record<string, unknown> | null;
+  isAuthenticated: boolean;
+  isLoading?: boolean;
+  login: (credentials: Record<string, unknown>) => Promise<void> | void;
+  logout: () => void;
+}
+
+export interface ThemeHookValue {
+  theme: string;
+  isDark: boolean;
+  toggleTheme: () => void;
+  setTheme: (theme: string) => void;
+}
+
+export interface NavigationHookValue {
+  (path: string, options?: Record<string, unknown>): void;
+}
+
+export interface ApiHookValue {
+  data: unknown;
+  loading: boolean;
+  error: string | null;
+  fetchData: (url: string) => Promise<void>;
 }

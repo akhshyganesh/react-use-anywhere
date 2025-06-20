@@ -1,27 +1,28 @@
-import { createSingletonNavigationService, createHookService } from '../../lib';
+import { createSingletonService, createTypedSingletonService } from '../../lib';
+import { logServiceCall } from './logger';
+import type { AppHooks } from '../App';
 
-// Create a navigation service instance  
-export const navigationService = createSingletonNavigationService({
-  enableWarnings: true,
-  fallbackBehavior: 'warn',
-});
+// 🚀 STANDARD: Create a singleton service to use navigation hook anywhere
+export const navigationService = createSingletonService<(path: string) => void>('navigation');
 
-// Create an auth service for the demo
-export const authService = createHookService<{
-  user: string | null;
-  isAuthenticated: boolean;
-  login: (username: string) => void;
-  logout: () => void;
-}>({
-  enableWarnings: true,
-  fallbackBehavior: 'warn',
-});
+// 🆕 TYPE-SAFE VERSION: Create with compile-time type checking
+export const typedNavigationService = createTypedSingletonService<AppHooks, 'navigation'>('navigation');
 
-// Convenience functions using the service methods
-export const navigateToLogin = () => {
-  navigationService.navigateToLogin?.('/login');
+// Helper functions you can use in any file
+export const goToLogin = () => {
+  logServiceCall('navigationService', 'goToLogin');
+  
+  navigationService.use((navigate) => {
+    navigate('/login');
+    logServiceCall('navigationService', 'navigate', { destination: '/login' });
+  });
 };
 
-export const navigateToHome = () => {
-  navigationService.navigateToHome?.('/');
+export const goToHome = () => {
+  logServiceCall('navigationService', 'goToHome');
+  
+  navigationService.use((navigate) => {
+    navigate('/');
+    logServiceCall('navigationService', 'navigate', { destination: '/' });
+  });
 };

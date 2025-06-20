@@ -1,61 +1,35 @@
-// Main library exports
-export { HookInjectionProvider } from './provider/HookInjectionProvider';
+// Core exports
+export { HookProvider, TypedHookProvider, useHookContext, useTypedHookContext } from './providers/HookInjectionProvider';
 export { 
-  useHookInjection, 
-  useHookFromContext,
-  useNavigationInjection, // Legacy
-  useNavigationFromContext, // Legacy
-  useCustomHook, // Legacy
-  useAllInjectedHooks 
-} from './hooks/useHookInjection';
-
-// Generic hook services
+  useHookService, 
+  useTypedHookService, 
+  useStrictHookService, 
+  useHook, 
+  useTypedHook, 
+  useStrictHook, 
+  useAllHooks 
+} from './hooks/useHookService';
 export { 
-  createHookService,
-  createHookServiceWithTimeout,
-  createSingletonHookService,
-  getSingletonHookService,
-  resetSingletonHookService,
-  resetAllSingletonHookServices
+  createHookService, 
+  createSingletonService, 
+  getSingletonService, 
+  resetAllServices,
+  createTypedSingletonService,
+  createStrictSingletonService,
+  createInferredSingletonService
 } from './services/createHookService';
 
-// Generic hook injection service
-export { createHookInjectionService } from './services/createHookInjectionService';
-
-// Legacy navigation services (for backwards compatibility)
-export { NavigationService } from './services/NavigationService';
-export { 
-  createNavigationService, 
-  createSingletonNavigationService,
-  getSingletonNavigationService,
-  resetSingletonNavigationService 
-} from './services/createNavigationService';
-
-// Types
+// Type exports
 export type {
-  HookInjectionContext,
-  HookFunction,
   ReactHook,
-  HookServiceInterface,
-  HookServiceOptions,
-  // Legacy types
-  NavigationHook,
-  NavigationFunction,
-  HookInjectionProviderProps,
-  NavigationServiceInterface,
-  HookInjectionServiceInterface,
+  HookService,
+  TypedHookService,
+  HookContext,
+  HookRegistry,
+  HookProviderProps,
+  TypedHookProviderProps,
+  ExtractHookType,
+  HookReturnTypes,
+  ServiceFactory,
+  TypedServiceFactory
 } from './types';
-
-// Utilities
-export { withHookInjection } from './hoc/withHookInjection';
-export { HookInjectionError } from './errors/HookInjectionError';
-
-// Version compatibility utilities
-export {
-  isReactVersionSupported,
-  checkReactVersion,
-  getReactVersion,
-  getCompatibilityInfo,
-  logCompatibilityInfo,
-  assertReactCompatibility,
-} from './utils/reactVersionCheck';

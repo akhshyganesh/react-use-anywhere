@@ -1,170 +1,216 @@
-import { HookInjectionError } from '../errors/HookInjectionError';
-import type { HookServiceInterface, HookServiceOptions } from '../types';
+import type { HookService, ReactHook, TypedHookService } from '../types';
+import {
+  isHookRegistered,
+  getRegisteredHookNames,
+} from '../providers/HookInjectionProvider';
 
 /**
- * Creates a generic hook service that can store and manage any type of hook
- * This is the main factory function for creating hook services
+ * Creates a service that can store and use hook values from anywhere in your code
+ *
+ * ⚠️ RECOMMENDATION: Use `createSingletonService` instead for better performance and state consistency
+ *
+ * This creates a NEW instance every time it's called. For most React applications,
+ * you want shared state across components, so use `createSingletonService` instead.
+ *
+ * Only use this if you specifically need multiple independent instances.
  */
-export function createHookService<T = any>(
-  options: HookServiceOptions<T> = {}
-): HookServiceInterface<T> {
-  const {
-    enableWarnings = true,
-    fallbackBehavior = 'warn',
-    initialValue = null,
-    validator,
-  } = options;
+export function createHookService<T = unknown>(): HookService<T> {
+  let value: T | null = null;
+  let ready = false;
 
-  let hook: T | null = initialValue;
-  let isHookReady = !!initialValue;
+  return {
+    // Internal method used by useHookService - don't call directly
+    _setValue(newValue: T) {
+      // Only update if value actually changed
+      const hasChanged =
+        newValue !== value &&
+        JSON.stringify(newValue) !== JSON.stringify(value);
 
-  const service: HookServiceInterface<T> = {
-    setHook(newHook: T): void {
-      // Validate hook if validator is provided
-      if (validator && !validator(newHook)) {
-        const error = HookInjectionError.invalidHook('hook', 'valid hook function');
-        if (fallbackBehavior === 'error') {
-          throw error;
-        }
-        if (fallbackBehavior === 'warn' && enableWarnings) {
-          console.warn(error.message);
-        }
-        return;
+      if (hasChanged || !ready) {
+        value = newValue;
+        ready = true;
       }
-
-      hook = newHook;
-      isHookReady = true;
     },
 
-    getHook(): T | null {
-      return hook;
+    // Get the current hook value
+    get(): T | null {
+      return value;
     },
 
+    // Check if the hook value is available
     isReady(): boolean {
-      return isHookReady;
+      return ready;
     },
 
-    execute<R = any>(callback: (hook: T) => R): R | null {
-      if (!isHookReady || !hook) {
-        const error = HookInjectionError.hookNotSet();
-        
-        if (fallbackBehavior === 'error') {
-          throw error;
-        }
-        
-        if (fallbackBehavior === 'warn' && enableWarnings) {
-          console.warn(error.message);
-        }
-        
+    // Use the hook value in a callback - this is the main way to use hooks in non-React files
+    use<R = unknown>(callback: (hookValue: T) => R): R | null {
+      if (!ready) {
+        console.warn(
+          "Hook service not ready. Make sure you're using useHookService in a React component."
+        );
         return null;
       }
 
       try {
-        return callback(hook);
+        return callback(value as T);
       } catch (error) {
-        if (enableWarnings) {
-          console.warn('Error executing callback with hook:', error);
-        }
+        console.error('Error using hook service:', error);
         return null;
       }
     },
 
-    reset(): void {
-      hook = initialValue;
-      isHookReady = !!initialValue;
-    },
-  };
-
-  return service;
-}
-
-/**
- * Creates a hook service with timeout support
- */
-export function createHookServiceWithTimeout<T = any>(
-  options: HookServiceOptions<T> = {}
-): HookServiceInterface<T> & { waitForHook(): Promise<T> } {
-  const service = createHookService(options);
-  const { timeout = 5000 } = options;
-
-  return {
-    ...service,
-    
-    async waitForHook(): Promise<T> {
-      if (service.isReady()) {
-        const hook = service.getHook();
-        if (hook !== null) {
-          return hook;
-        }
-      }
-
-      return new Promise((resolve, reject) => {
-        const checkInterval = 50; // Check every 50ms
-        let elapsed = 0;
-
-        const timer = setInterval(() => {
-          if (service.isReady()) {
-            const hook = service.getHook();
-            if (hook !== null) {
-              clearInterval(timer);
-              resolve(hook);
-              return;
-            }
-          }
-
-          elapsed += checkInterval;
-          if (elapsed >= timeout) {
-            clearInterval(timer);
-            reject(new Error(`Hook was not ready within ${timeout}ms timeout`));
-          }
-        }, checkInterval);
-      });
+    // Reset the service (for testing)
+    _reset() {
+      value = null;
+      ready = false;
     },
   };
 }
 
-/**
- * Create a singleton hook service instance
- * Useful when you want to share the same service across your entire application
- */
-const singletonServices = new Map<string, HookServiceInterface<any>>();
+// Store for singleton services
+const singletonServices = new Map<string, HookService<unknown>>();
 
-export function createSingletonHookService<T = any>(
-  serviceId: string,
-  options: HookServiceOptions<T> = {}
-): HookServiceInterface<T> {
-  if (!singletonServices.has(serviceId)) {
-    singletonServices.set(serviceId, createHookService(options));
+/**
+ * Validate that the hook name is registered
+ */
+function validateHookName(hookName: string): void {
+  const registeredHooks = getRegisteredHookNames();
+
+  if (registeredHooks.length === 0) {
+    console.warn(
+      `🚨 No hooks registered yet. Make sure to wrap your app with HookProvider first.\n` +
+        `Example: <HookProvider hooks={{ ${hookName}: your${hookName.charAt(0).toUpperCase() + hookName.slice(1)}Hook }}>`
+    );
+    return;
   }
-  return singletonServices.get(serviceId)!;
-}
 
-/**
- * Get a singleton service instance (if it exists)
- */
-export function getSingletonHookService<T = any>(serviceId: string): HookServiceInterface<T> | null {
-  return singletonServices.get(serviceId) || null;
-}
+  if (!isHookRegistered(hookName)) {
+    const suggestions = registeredHooks
+      .filter(
+        (name) =>
+          name.toLowerCase().includes(hookName.toLowerCase()) ||
+          hookName.toLowerCase().includes(name.toLowerCase())
+      )
+      .slice(0, 3);
 
-/**
- * Reset a singleton service instance
- */
-export function resetSingletonHookService(serviceId: string): void {
-  const service = singletonServices.get(serviceId);
-  if (service?.reset) {
-    service.reset();
+    const suggestionText =
+      suggestions.length > 0
+        ? `\nDid you mean one of these?\n${suggestions.map((s) => `  • "${s}"`).join('\n')}`
+        : '';
+
+    console.error(
+      `🚨 Hook "${hookName}" is not registered in HookProvider.\n` +
+        `Available hooks: ${registeredHooks.map((h) => `"${h}"`).join(', ')}${suggestionText}\n\n` +
+        `💡 Make sure your HookProvider includes:\n` +
+        `<HookProvider hooks={{ ${hookName}: your${hookName.charAt(0).toUpperCase() + hookName.slice(1)}Hook, ...other hooks }}>`
+    );
   }
-  singletonServices.delete(serviceId);
 }
 
 /**
- * Reset all singleton service instances
+ * 🚀 RECOMMENDED: Create or get a singleton service
+ *
+ * This is the standard way to create services in react-use-anywhere.
+ * Benefits:
+ * - ✅ Shared state across your entire app
+ * - ✅ Better performance (no duplicate instances)
+ * - ✅ Consistent behavior across components
+ * - ✅ Memory efficient
+ *
+ * @param hookName - Name of the hook as registered in HookProvider
  */
-export function resetAllSingletonHookServices(): void {
-  singletonServices.forEach((service, serviceId) => {
-    if (service.reset) {
-      service.reset();
-    }
+export function createSingletonService<T = unknown>(
+  hookName: string
+): HookService<T> {
+  // Validate hook name at runtime
+  validateHookName(hookName);
+
+  if (!singletonServices.has(hookName)) {
+    singletonServices.set(hookName, createHookService<T>());
+  }
+  return singletonServices.get(hookName)! as HookService<T>;
+}
+
+/**
+ * Get an existing singleton service
+ */
+export function getSingletonService<T = unknown>(
+  hookName: string
+): HookService<T> | null {
+  validateHookName(hookName);
+  const service = singletonServices.get(hookName);
+  return service ? (service as HookService<T>) : null;
+}
+
+/**
+ * Reset all singleton services (useful for testing)
+ */
+export function resetAllServices(): void {
+  singletonServices.forEach((service) => {
+    service._reset();
   });
   singletonServices.clear();
 }
+
+/**
+ * 🆕 TYPE-SAFE VERSION: Create a service with full type safety
+ * Use this when you want compile-time checking of hook names
+ *
+ * @param hookName - Hook name (will be type-checked against registered hooks)
+ */
+export function createTypedSingletonService<
+  THooks extends Record<string, ReactHook<unknown>>,
+  K extends keyof THooks,
+>(hookName: K): HookService<ExtractHookType<THooks[K]>> {
+  return createSingletonService(hookName as string);
+}
+
+/**
+ * 🆕 STRICT TYPE-SAFE VERSION: Enforces hook name validation at compile time
+ * This version will show TypeScript errors if you use invalid hook names
+ *
+ * Usage:
+ * ```typescript
+ * // First, define your hooks type
+ * type MyHooks = {
+ *   navigate: () => NavigateFunction;
+ *   auth: () => AuthState;
+ * };
+ *
+ * // Then create services with compile-time validation
+ * const navService = createStrictSingletonService<MyHooks>('navigate'); // ✅ Valid
+ * const badService = createStrictSingletonService<MyHooks>('invalid'); // ❌ TypeScript Error
+ * ```
+ */
+export function createStrictSingletonService<
+  THooks extends Record<string, ReactHook<unknown>>,
+>(
+  hookName: keyof THooks & string
+): HookService<ExtractHookType<THooks[typeof hookName]>> {
+  // Runtime validation still happens
+  validateHookName(hookName);
+
+  if (!singletonServices.has(hookName)) {
+    singletonServices.set(hookName, createHookService());
+  }
+  return singletonServices.get(hookName)! as HookService<
+    ExtractHookType<THooks[typeof hookName]>
+  >;
+}
+
+/**
+ * 🆕 INFERRED TYPE-SAFE VERSION: Automatically infers types from provider
+ * This creates services that are automatically typed based on your HookProvider setup
+ */
+export function createInferredSingletonService<
+  THooks extends Record<string, ReactHook<unknown>>,
+  K extends keyof THooks,
+>(hookName: K): TypedHookService<ExtractHookType<THooks[K]>, THooks> {
+  return createSingletonService(hookName as string) as TypedHookService<
+    ExtractHookType<THooks[K]>,
+    THooks
+  >;
+}
+
+// Helper type for extracting hook return types
+type ExtractHookType<T> = T extends ReactHook<infer R> ? R : never;

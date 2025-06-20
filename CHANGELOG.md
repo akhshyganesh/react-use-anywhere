@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-06-19
+
+### Added
+- 🚀 **Simplified API**: Streamlined the core API to 3 main functions for better developer experience
+- **Enhanced TypeScript Support**: Improved type definitions with better generics and type inference
+- **🌟 Singleton Services (Standard)**: `createSingletonService` is now the recommended and standard approach for optimal performance and shared state
+- **Service Management**: Added `resetAllServices` function for better testing support
+- **Direct Hook Access**: Added `useHook` and `useAllHooks` for direct access to hook values in components
+- **Better Error Handling**: Improved error messages and warnings with more context
+- **Demo Application**: Complete demo showing auth, navigation, and theme management without any router dependencies
+
+### API Changes
+- **🚀 Standard Approach**: `createSingletonService()` is now the recommended way to create services
+- **⚠️ Advanced Use**: `createHookService()` is now marked for advanced use cases only
+- **Simplified Provider**: `HookProvider` with cleaner `hooks` prop interface
+- **Enhanced Hook Connection**: `useHookService(service, hookName)` for connecting services to hooks
+- **Direct Context Access**: `useHookContext()` for accessing all hook values
+
+### Performance & Best Practices
+- ✅ **Singleton Services**: Default to shared instances for better performance and state consistency
+- ✅ **Memory Optimization**: Prevents duplicate service instances and memory leaks
+- ✅ **State Synchronization**: All components share the same service state automatically
+
+### Developer Experience
+- ✅ **Cleaner API**: Reduced complexity while maintaining full functionality
+- ✅ **Better Documentation**: Updated README with practical examples and clear usage patterns  
+- ✅ **Improved Testing**: Better test utilities and service management
+- ✅ **Enhanced Type Safety**: Stronger TypeScript support with proper generic constraints
+
+### Performance
+- 🚀 **Smaller Bundle**: Removed unnecessary complexity and dependencies
+- 🚀 **Optimized Context**: More efficient context updates and hook execution
+- 🚀 **Better Tree Shaking**: Cleaner exports for optimal bundle sizes
+
+## [1.0.1] - 2025-06-14
+
+### Fixed
+- 🐛 **Package Configuration**: Fixed module exports for both ESM and CommonJS
+- 🐛 **Type Definitions**: Corrected TypeScript declaration files
+- 🐛 **Build Process**: Improved build configuration for better compatibility
+
 ## [1.0.0] - 2025-06-14
 
 ### Added

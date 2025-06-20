@@ -1,83 +1,97 @@
-import React, { useState, useMemo } from 'react';
-import { HookInjectionProvider } from '../lib';
+import React, { useState } from 'react';
+import { HookProvider, TypedHookProvider } from '../lib';
 import { Home } from './components/Home';
 import { Login } from './components/Login';
-import './App.css';
+import './assets/App.css';
 
-// Custom navigation hook that works without React Router
-const useSimpleNavigation = () => {
-  return (path: string, options?: any) => {
-    console.log(`Navigation called: ${path}`, options);
-    // Simple hash-based navigation for demo purposes
+// Define hook types for type safety
+type NavigateFunction = (path: string) => void;
+type AuthState = {
+  user: { name: string; email: string } | null;
+  isAuthenticated: boolean;
+  login: (name: string, email: string) => void;
+  logout: () => void;
+};
+type ThemeState = {
+  theme: 'light' | 'dark';
+  isDark: boolean;
+  toggle: () => void;
+};
+
+// Define the app's hook types for type safety
+export type AppHooks = {
+  navigation: () => NavigateFunction;
+  auth: () => AuthState;
+  theme: () => ThemeState;
+};
+
+// Simple navigation hook for the demo
+const useNavigation = (): NavigateFunction => {
+  return (path: string) => {
+    console.log(`Navigating to: ${path}`);
     window.location.hash = path;
   };
 };
 
-// Custom authentication hook for demonstration
-const useAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<string | null>(null);
+// Simple auth hook for the demo
+const useAuth = (): AuthState => {
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   
   return {
-    isAuthenticated,
     user,
-    login: (username: string) => {
-      setIsAuthenticated(true);
-      setUser(username);
+    isAuthenticated: Boolean(user),
+    login: (name: string, email: string) => {
+      setUser({ name, email });
+      console.log('User logged in:', { name, email });
     },
     logout: () => {
-      setIsAuthenticated(false);
       setUser(null);
+      console.log('User logged out');
     }
   };
 };
 
-// Custom theme hook for demonstration
-const useTheme = () => {
+// Simple theme hook for the demo
+const useTheme = (): ThemeState => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
   return {
     theme,
-    toggleTheme: () => setTheme(prev => prev === 'light' ? 'dark' : 'light'),
-    isDark: theme === 'dark'
+    isDark: theme === 'dark',
+    toggle: () => {
+      const newTheme = theme === 'light' ? 'dark' : 'light';
+      setTheme(newTheme);
+      console.log('Theme changed to:', newTheme);
+    }
   };
 };
 
 const App: React.FC = () => {
-  const [currentRoute, setCurrentRoute] = useState('/');
+  const [currentPage, setCurrentPage] = useState('/');
 
-  // Listen to hash changes for simple routing
+  // Simple hash-based routing for the demo
   React.useEffect(() => {
     const handleHashChange = () => {
-      setCurrentRoute(window.location.hash.slice(1) || '/');
+      setCurrentPage(window.location.hash.slice(1) || '/');
     };
     
     window.addEventListener('hashchange', handleHashChange);
-    handleHashChange(); // Set initial route
+    handleHashChange();
     
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Memoize hooks to prevent unnecessary re-renders
-  const hooks = useMemo(() => ({
-    navigation: useSimpleNavigation,
+  // Define hooks object with proper typing
+  const hooks: AppHooks = {
+    navigation: useNavigation,
     auth: useAuth,
     theme: useTheme,
-  }), []);
-
-  const renderCurrentRoute = () => {
-    switch (currentRoute) {
-      case '/login':
-        return <Login />;
-      default:
-        return <Home />;
-    }
   };
 
   return (
-    <HookInjectionProvider hooks={hooks}>
-      {renderCurrentRoute()}
-    </HookInjectionProvider>
+    <TypedHookProvider hooks={hooks}>
+      {currentPage === '/login' ? <Login /> : <Home />}
+    </TypedHookProvider>
   );
 };
 
