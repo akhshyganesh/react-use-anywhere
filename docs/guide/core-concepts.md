@@ -7,21 +7,21 @@ Understanding the core concepts of React Use Anywhere will help you build more e
 React Use Anywhere uses a **service-oriented pattern** with **dependency injection** to make React hooks available outside of components. The library provides both **basic** and **type-safe** APIs for maximum flexibility.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     React Application                      │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐    ┌─────────────────┐                │
-│  │   Components    │    │    Services     │                │
-│  │                 │    │                 │                │
-│  │ ┌─────────────┐ │    │ ┌─────────────┐ │                │
-│  │ │useHookSvc() │ │    │ │service.use()│ │                │
-│  │ │             │ │    │ │             │ │                │
-│  │ └─────────────┘ │    │ └─────────────┘ │                │
-│  └─────────────────┘    └─────────────────┘                │
-├─────────────────────────────────────────────────────────────┤
-│                   HookProvider                              │
-│               (Hook Registry)                               │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│               React Application              │
+├──────────────────────────────────────────────┤
+│  ┌─────────────────┐    ┌─────────────────┐  │
+│  │   Components    │    │    Services     │  │
+│  │                 │    │                 │  │
+│  │ ┌─────────────┐ │    │ ┌─────────────┐ │  │
+│  │ │useHookSvc() │ │    │ │service.use()│ │  │
+│  │ │             │ │    │ │             │ │  │
+│  │ └─────────────┘ │    │ └─────────────┘ │  │
+│  └─────────────────┘    └─────────────────┘  │
+├──────────────────────────────────────────────┤
+│                   HookProvider               │
+│               (Hook Registry)                │
+└──────────────────────────────────────────────┘
 ```
 
 ## Key Components
