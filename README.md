@@ -1,463 +1,150 @@
-# React Use Anywhere
+# 🚀 React Use Anywhere
+
+**Use React hooks anywhere in your codebase - even in plain JavaScript/TypeScript files!**
 
 [![npm version](https://badge.fury.io/js/react-use-anywhere.svg)](https://badge.fury.io/js/react-use-anywhere)
-[![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Use React hooks **anywhere** in your codebase - in services, utilities, and business logic files. Works with any React hooks and any router.
+## 🎯 Why This Library Exists
 
-## 🚀 Features
+Have you ever wanted to:
+- **Call navigation from a service layer?** (e.g., redirect after API calls)
+- **Access user authentication state in utility functions?**
+- **Update theme from business logic files?**
+- **Use React Context values outside components?**
 
-- ✅ **TypeScript Support**: Complete type safety with excellent IntelliSense
-- ✅ **Zero Dependencies**: Uses peer dependencies only (React 16.8+)
-- ✅ **Hook-Agnostic**: Works with ANY React hooks (navigation, auth, state, custom hooks, etc.)
-- ✅ **Router-Agnostic**: Works with React Router, TanStack Router, Next.js Router, or no router at all
-- ✅ **Simple API**: Just 3 main functions to learn
-- ✅ **Singleton Support**: Share services across your entire application
-- ✅ **Tree Shakeable**: Optimized bundle size with clean exports
-- ✅ **Production Ready**: Comprehensive error handling and warnings
+**Traditional React** forces you to pass props down or use complex patterns. **React Use Anywhere** lets you access any React hook from anywhere in your codebase - services, utilities, business logic, anywhere!
 
-## 📦 Installation
+## ✨ Key Benefits
+
+- 🎯 **Use hooks anywhere** - Not just in React components
+- 🔧 **Service-oriented architecture** - Perfect for clean architecture patterns
+- 🛡️ **Type-safe** - Full TypeScript support with compile-time validation
+- ⚡ **Zero boilerplate** - Simple setup, powerful results
+- 🏗️ **Framework agnostic** - Works with any React setup (Vite, CRA, Next.js, etc.)
+- 🎨 **Great DX** - Excellent developer experience with helpful error messages
+
+## 🚀 Quick Start
+
+### 1. Installation
 
 ```bash
 npm install react-use-anywhere
+# or
+yarn add react-use-anywhere
 ```
 
-## 🎯 Quick Start
-
-### 1. Wrap your app with the provider
+### 2. Wrap Your App
 
 ```tsx
-import React from 'react';
 import { HookProvider } from 'react-use-anywhere';
-import { useNavigate } from 'react-router-dom'; // or any navigation hook
+import { useNavigate } from 'react-router-dom';
 
 function App() {
   return (
-    <HookProvider hooks={{ 
-      navigate: useNavigate, 
-      auth: useAuth,
-      theme: useTheme 
-    }}>
-      <HomePage />
+    <HookProvider
+      hooks={{
+        navigate: useNavigate,
+        auth: useAuth,
+        theme: useTheme,
+      }}
+    >
+      <YourAppComponents />
     </HookProvider>
   );
 }
 ```
 
-### 2. Create services for your hooks
-
-```tsx
-import { createSingletonService } from 'react-use-anywhere';
-
-// 🚀 RECOMMENDED: Use singleton services (standard approach)
-export const navigationService = createSingletonService('navigation');
-export const authService = createSingletonService('auth');
-export const themeService = createSingletonService('theme');
-
-// ⚠️ AVOID: Creates new instances (use only for special cases)
-// export const navigationService = createHookService();
-```
-
-**Why use singleton services?**
-
-Singleton services are the **recommended and optimized approach** for react-use-anywhere:
-
-- **✅ Shared State**: All components share the same service instance, ensuring data synchronization
-- **✅ Better Performance**: One instance per service instead of multiple instances
-- **✅ Memory Efficient**: Prevents memory leaks from creating duplicate services
-- **✅ Consistent Behavior**: State changes are immediately reflected across your entire app
-- **✅ Simpler Testing**: Easier to mock and test with predictable service instances
-
-### 3. Connect services to hooks in React components
-
-```tsx
-import { useHookService } from 'react-use-anywhere';
-
-function HomePage() {
-  // Connect each service to its corresponding hook
-  useHookService(navigationService, 'navigate');
-  useHookService(authService, 'auth');
-  useHookService(themeService, 'theme');
-  
-  return <div>Welcome! Your hooks are now available anywhere.</div>;
-}
-```
-
-### 4. Use hooks anywhere in your codebase
+### 3. Create Services
 
 ```typescript
-// services/userService.ts - Use hooks in plain TypeScript files!
-import { navigationService, authService, themeService } from './services';
+// services/navigationService.ts
+import { createSingletonService } from 'react-use-anywhere';
 
-export function handleLogout() {
-  // Use auth hook from anywhere
-  authService.use((auth) => {
-    auth.logout();
-    console.log('User logged out');
-  });
-  
-  // Use navigation hook from anywhere  
+export const navigationService = createSingletonService('navigate');
+
+export const goToLogin = () => {
   navigationService.use((navigate) => {
     navigate('/login');
   });
-  
-  // Even use theme hooks from business logic
-  themeService.use((theme) => {
-    theme.setTheme('light'); // Reset to light theme on logout
-  });
-}
-
-// Check if user is authenticated before API calls
-export function makeAuthenticatedRequest(url: string) {
-  const isAuthenticated = authService.use((auth) => auth.isAuthenticated);
-  
-  if (!isAuthenticated) {
-    navigationService.use((navigate) => navigate('/login'));
-    return;
-  }
-  
-  // Make your API request...
-}
+};
 ```
 
-## 🎨 Complete Example
+### 4. Connect Services in Components
 
 ```tsx
-import React, { useState } from 'react';
-import { 
-  HookProvider, 
-  createSingletonService, 
-  useHookService 
-} from 'react-use-anywhere';
+// components/SomeComponent.tsx
+import { useHookService } from 'react-use-anywhere';
+import { navigationService } from '../services/navigationService';
 
-// 1. Create your custom hooks
-const useAuth = () => {
-  const [user, setUser] = useState(null);
-  return {
-    user,
-    isAuthenticated: !!user,
-    login: (userData) => setUser(userData),
-    logout: () => setUser(null)
-  };
-};
-
-const useTheme = () => {
-  const [theme, setTheme] = useState('light');
-  return {
-    theme,
-    isDark: theme === 'dark',
-    toggle: () => setTheme(t => t === 'light' ? 'dark' : 'light')
-  };
-};
-
-// 2. Create services (using singletons for shared state)
-export const authService = createSingletonService('auth');
-export const themeService = createSingletonService('theme');
-export const navigationService = createSingletonService('navigation');
-
-// 3. Business logic that works anywhere
-export const handleLogin = async (credentials) => {
-  const success = await authService.use(async (auth) => {
-    // Simulate login API call
-    const userData = await loginAPI(credentials);
-    auth.login(userData);
-    return true;
-  });
-
-  if (success) {
-    navigationService.use((navigate) => navigate('/dashboard'));
-    themeService.use((theme) => theme.toggle()); // Welcome them with dark mode!
-  }
-};
-
-export const toggleAppTheme = () => {
-  themeService.use((theme) => {
-    theme.toggle();
-    console.log(`Theme switched to: ${theme.theme}`);
-  });
-};
-
-// 4. React components
-function App() {
-  return (
-    <HookProvider hooks={{ 
-      navigate: useNavigate,  // Any router's navigation hook
-      auth: useAuth,          // Your custom auth hook
-      theme: useTheme         // Your custom theme hook
-    }}>
-      <Dashboard />
-    </HookProvider>
-  );
-}
-
-function Dashboard() {
-  // Connect all services to their hooks
+function SomeComponent() {
+  // This makes the navigate hook available in navigationService
   useHookService(navigationService, 'navigate');
-  useHookService(authService, 'auth');
-  useHookService(themeService, 'theme');
   
-  return (
-    <div>
-      <button onClick={() => handleLogin({ username: 'demo' })}>
-        Login
-      </button>
-      <button onClick={toggleAppTheme}>
-        Toggle Theme  
-      </button>
-      <button onClick={() => navigationService.use(nav => nav('/settings'))}>
-        Go to Settings
-      </button>
-    </div>
-  );
+  return <div>Your component</div>;
 }
 ```
 
-## 📚 API Reference
-
-### `HookProvider`
-Provider component that makes hooks available to services throughout your app.
-
-**Props:**
-- `hooks`: Object mapping hook names to hook functions
-- `children`: React components that will have access to the hooks
-
-```tsx
-<HookProvider hooks={{ 
-  navigate: useNavigate,
-  auth: useAuth,
-  theme: useTheme,
-  customHook: useCustomHook
-}}>
-  <App />
-</HookProvider>
-```
-
-### `createSingletonService<T>(serviceId)` ⭐ **Recommended**
-Creates or returns an existing singleton service. This is the **standard approach** for react-use-anywhere.
-
-```tsx
-// Standard usage - creates or returns existing service
-const authService = createSingletonService<AuthHookType>('auth');
-const themeService = createSingletonService<ThemeHookType>('theme');
-
-// Calling again with same ID returns the SAME instance
-const authService2 = createSingletonService<AuthHookType>('auth');
-console.log(authService === authService2); // true ✅
-```
-
-### `createHookService<T>()` ⚠️ **Advanced Use Only**
-Creates a new service instance every time. Only use this if you specifically need multiple independent instances.
-
-```tsx
-// Creates NEW instances each time
-const service1 = createHookService<AuthHookType>();
-const service2 = createHookService<AuthHookType>();
-console.log(service1 === service2); // false - different instances!
-
-// Use case: Multiple independent forms or isolated components
-const loginFormService = createHookService<FormHookType>();
-const signupFormService = createHookService<FormHookType>();
-```
-
-### `useHookService(service, hookName)`
-Connects a service to a hook from the provider. Use this in React components to make hook values available in services.
-
-```tsx
-function MyComponent() {
-  useHookService(navigationService, 'navigate');
-  useHookService(authService, 'auth');
-  // Now these services can be used anywhere in your codebase
-}
-```
-
-### Service Methods
-
-Every service created with `createHookService` has these methods:
-
-```tsx
-const service = createHookService<MyHookType>();
-
-// Use the hook value in a callback - main method for using hooks anywhere
-service.use((hookValue) => {
-  // Use the hook value here
-  hookValue.someMethod();
-  return someResult;
-});
-
-// Get the current hook value (returns null if not ready)
-const currentValue = service.get();
-
-// Check if the service is ready to use
-const isReady = service.isReady();
-```
-
-### Direct Hook Access
-
-Sometimes you want to use hook values directly in React components:
-
-```tsx
-import { useHook, useAllHooks, useHookContext } from 'react-use-anywhere';
-
-function MyComponent() {
-  // Get a specific hook value
-  const navigate = useHook<NavigateFunction>('navigate');
-  const auth = useHook<AuthHookType>('auth');
-  
-  // Get all hook values
-  const allHooks = useAllHooks();
-  
-  // Get the full context (same as useAllHooks)
-  const context = useHookContext();
-  
-  return <div>Direct access to hooks!</div>;
-}
-```
-
-## 🔄 Router Examples
-
-### React Router v6
-```tsx
-import { useNavigate, useLocation } from 'react-router-dom';
-
-<HookProvider hooks={{ 
-  navigate: useNavigate,
-  location: useLocation 
-}}>
-  <App />
-</HookProvider>
-```
-
-### TanStack Router
-```tsx
-import { useRouter, useNavigate } from '@tanstack/react-router';
-
-<HookProvider hooks={{ 
-  navigate: useNavigate,
-  router: useRouter 
-}}>
-  <App />
-</HookProvider>
-```
-
-### Next.js App Router
-```tsx
-import { useRouter } from 'next/navigation';
-
-<HookProvider hooks={{ 
-  navigate: () => {
-    const router = useRouter();
-    return router.push;
-  }
-}}>
-  <App />
-</HookProvider>
-```
-
-### Next.js Pages Router
-```tsx
-import { useRouter } from 'next/router';
-
-<HookProvider hooks={{ 
-  navigate: () => {
-    const router = useRouter();
-    return router.push;
-  },
-  query: () => useRouter().query
-}}>
-  <App />
-</HookProvider>
-```
-
-## 🧪 Testing
-
-Testing with react-use-anywhere is straightforward:
+### 5. Use Anywhere! 🎉
 
 ```typescript
-import { createHookService, resetAllServices } from 'react-use-anywhere';
+// anywhere in your code - even non-React files!
+import { goToLogin } from './services/navigationService';
 
-describe('My Business Logic', () => {
-  const authService = createHookService();
-  const navigationService = createHookService();
+// In an API client
+async function handleApiError(error) {
+  if (error.status === 401) {
+    goToLogin(); // 🚀 Navigate from anywhere!
+  }
+}
 
-  beforeEach(() => {
-    // Reset all services before each test
-    resetAllServices();
-    
-    // Set up mock hook values
-    authService._setValue({
-      user: { id: 1, name: 'Test User' },
-      isAuthenticated: true,
-      logout: jest.fn()
-    });
-    
-    navigationService._setValue(jest.fn());
-  });
-
-  it('should logout and redirect', () => {
-    const mockNavigate = jest.fn();
-    navigationService._setValue(mockNavigate);
-    
-    // Test your business logic
-    handleLogout();
-    
-    expect(mockNavigate).toHaveBeenCalledWith('/login');
-  });
-});
+// In business logic
+function processUserLogout() {
+  clearUserData();
+  goToLogin(); // 🚀 Works everywhere!
+}
 ```
 
-## 🎯 Best Practices
+## 🛡️ Type-Safe Usage
 
-### 1. Always Use Singleton Services (Standard Approach)
-```tsx
-// ✅ RECOMMENDED - Standard approach
-export const authService = createSingletonService<AuthHook>('auth');
-export const themeService = createSingletonService<ThemeHook>('theme');
-export const navigationService = createSingletonService<NavigationHook>('navigation');
+For the best developer experience, use the type-safe versions:
 
-// ❌ AVOID - Creates new instances, causes state inconsistency
-export const getAuthService = () => createHookService();
-export const authService = createHookService(); // New instance each import
+```typescript
+// Define your app's hook types
+type AppHooks = {
+  navigate: () => NavigateFunction;
+  auth: () => AuthState;
+  theme: () => ThemeState;
+};
+
+// Create type-safe services
+const navService = createTypedSingletonService<AppHooks, 'navigate'>('navigate');
+
+// Use type-safe providers
+<TypedHookProvider<AppHooks> hooks={{ navigate, auth, theme }}>
+  <App />
+</TypedHookProvider>
 ```
 
-### 2. Use Consistent Service IDs
-```tsx
-// ✅ Good - clear, consistent naming
-const authService = createSingletonService<AuthHook>('auth');
-const userService = createSingletonService<UserHook>('user');
-const themeService = createSingletonService<ThemeHook>('theme');
+## 📖 Common Use Cases
 
-// ❌ Avoid - inconsistent or unclear IDs
-const authService = createSingletonService<AuthHook>('myAuthThing');
-const userService = createSingletonService<UserHook>('userData123');
-```
+### 🔐 Authentication Service
+```typescript
+// services/authService.ts
+import { createSingletonService } from 'react-use-anywhere';
 
-### 3. Organize Services by Domain
-```tsx
-// services/auth.ts
-export const authService = createSingletonService<AuthHook>('auth');
-
-// services/navigation.ts  
-export const navigationService = createSingletonService<NavigationHook>('navigation');
-
-// services/theme.ts
-export const themeService = createSingletonService<ThemeHook>('theme');
-```
-
-### 4. Create Helper Functions
-```tsx
-// helpers/auth.ts
-import { authService, navigationService } from '../services';
+export const authService = createSingletonService('auth');
 
 export const requireAuth = () => {
-  const isAuthenticated = authService.use((auth) => auth.isAuthenticated);
-  
-  if (!isAuthenticated) {
-    navigationService.use((navigate) => navigate('/login'));
-    return false;
-  }
-  
-  return true;
+  return authService.use((auth) => {
+    if (!auth.isAuthenticated) {
+      // Redirect to login from anywhere!
+      navigationService.use((navigate) => navigate('/login'));
+      return false;
+    }
+    return true;
+  });
 };
 
 export const getCurrentUser = () => {
@@ -465,68 +152,170 @@ export const getCurrentUser = () => {
 };
 ```
 
-## 🔍 Common Patterns
+### 🎨 Theme Service
+```typescript
+// services/themeService.ts
+export const themeService = createSingletonService('theme');
 
-### Authentication Guard
-```tsx
-export const withAuth = (callback: () => void) => {
-  const isAuthenticated = authService.use((auth) => auth.isAuthenticated);
-  
-  if (!isAuthenticated) {
-    navigationService.use((navigate) => navigate('/login'));
-    return;
-  }
-  
-  callback();
+export const toggleTheme = () => {
+  themeService.use((theme) => theme.toggle());
 };
 
-// Usage
-withAuth(() => {
-  // Protected business logic
-  makeAPICall();
-});
+export const applyThemeToBody = () => {
+  themeService.use((theme) => {
+    document.body.className = theme.isDark ? 'dark' : 'light';
+  });
+};
 ```
 
-### Theme-Aware Operations
-```tsx
-export const showNotification = (message: string) => {
-  const isDark = themeService.use((theme) => theme.isDark);
+### 🌐 API Service with Auto-Redirect
+```typescript
+// services/apiService.ts
+import { requireAuth, logout } from './authService';
+import { goToLogin } from './navigationService';
+
+export const apiCall = async (endpoint: string) => {
+  // Check auth before API call
+  if (!requireAuth()) return;
   
-  showToast(message, {
-    style: {
-      backgroundColor: isDark ? '#333' : '#fff',
-      color: isDark ? '#fff' : '#333'
+  try {
+    const response = await fetch(endpoint);
+    
+    if (response.status === 401) {
+      logout(); // Clear auth state
+      goToLogin(); // Redirect to login
+      throw new Error('Unauthorized');
     }
-  });
+    
+    return response.json();
+  } catch (error) {
+    // Handle errors with navigation
+    if (error.message === 'Network Error') {
+      navigationService.use((navigate) => navigate('/offline'));
+    }
+    throw error;
+  }
 };
 ```
 
-### Router-Agnostic Navigation
-```tsx
-export const goToPage = (page: string, params?: Record<string, any>) => {
-  navigationService.use((navigate) => {
-    // This works with any router
-    navigate(page, params);
-  });
-};
+## 🏗️ Architecture Patterns
+
+### Clean Architecture with Services
+```
+src/
+├── components/          # React components
+├── services/           # Business logic services
+│   ├── authService.ts
+│   ├── apiService.ts
+│   └── themeService.ts
+├── hooks/              # Custom React hooks
+└── utils/              # Pure utility functions
 ```
 
-## 🚨 Error Handling
+### Service Layer Benefits
+- **Separation of Concerns**: Keep business logic out of components
+- **Reusability**: Use the same logic across multiple components
+- **Testability**: Easy to test business logic independently
+- **Maintainability**: Centralized state management and side effects
 
-The library includes comprehensive error handling:
+## 🔧 API Reference
 
-```tsx
-// Service not ready
-const result = myService.use((hookValue) => {
-  return hookValue.someMethod();
-});
-// Returns null and logs warning if service not ready
+### Core Functions
 
-// Hook execution errors are caught and logged
-// Your app continues to work even if individual hooks fail
+#### `createSingletonService<T>(hookName: string)`
+Creates a singleton service for accessing hook values.
+
+#### `useHookService(service, hookName)`
+Connects a service to a hook value in React components.
+
+#### `useHook<T>(hookName: string)`
+Directly access hook values in React components.
+
+### Type-Safe Functions
+
+#### `createTypedSingletonService<THooks, K>(hookName: K)`
+Type-safe version with compile-time validation.
+
+#### `TypedHookProvider<THooks>`
+Type-safe provider with hook type validation.
+
+### Service Methods
+
+#### `service.use(callback)`
+Execute code with the current hook value.
+
+#### `service.get()`
+Get the current hook value (or null if not ready).
+
+#### `service.isReady()`
+Check if the service has a hook value available.
+
+## 🎮 Try the Demo
+
+Clone this repo and run the demo to see it in action:
+
+```bash
+git clone https://github.com/yourusername/react-use-anywhere
+cd react-use-anywhere
+npm install
+npm run dev
+```
+
+The demo shows:
+- 🔐 Authentication flow with service-based login/logout
+- 🎨 Theme switching from service layer
+- 🧭 Navigation from non-React files
+- 📊 Real-time debug panel showing all service calls
+- 🛡️ Type-safe service usage examples
+
+## 🤝 When NOT to Use This
+
+This library is great for:
+- ✅ Service layers and business logic
+- ✅ Utility functions that need React state
+- ✅ API clients that need navigation/auth
+- ✅ Complex applications with clear architecture
+
+Don't use it for:
+- ❌ Simple prop drilling (just pass props)
+- ❌ Component-to-component communication (use standard React patterns)
+- ❌ Everything (still use normal React patterns where appropriate)
+
+## 🔍 How It Works
+
+1. **HookProvider** executes your hooks at the top level and provides values via React Context
+2. **Services** are created as singletons that can store and access hook values
+3. **useHookService** connects services to hook values in React components
+4. **Services can be used anywhere** - they automatically access the latest hook values
+
+## 🛠️ Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run demo
+npm run dev
+
+# Build library
+npm run build
+
+# Run tests
+npm test
 ```
 
 ## 📄 License
 
 MIT © [akhshyganesh](https://github.com/akhshyganesh)
-MIT © [akhshyganesh](https://github.com/akhshyganesh)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our contributing guidelines and submit PRs.
+
+## ⭐ Show Your Support
+
+If this library helps you build better React applications, please give it a star! ⭐
+
+---
+
+**Made with ❤️ for the React community**

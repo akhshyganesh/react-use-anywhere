@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useHookContext, isHookRegistered, getRegisteredHookNames } from '../providers/HookInjectionProvider';
-import type { HookService } from '../types';
+import type { HookService, ReactHook } from '../types';
 
 /**
  * Hook to connect a service to a hook value from the context
@@ -41,13 +41,57 @@ export function useHookService<T = any>(service: HookService<T>, hookName: strin
  * 🆕 TYPE-SAFE VERSION: Connect service with compile-time type checking
  */
 export function useTypedHookService<
-  THooks extends Record<string, any>,
+  THooks extends Record<string, ReactHook<any>>,
   K extends keyof THooks
 >(
-  service: HookService<THooks[K] extends () => infer R ? R : never>,
+  service: HookService<ExtractHookType<THooks[K]>>,
   hookName: K
 ): void {
   useHookService(service, hookName as string);
+}
+
+/**
+ * 🆕 STRICT TYPE-SAFE VERSION: Enforces valid hook names at compile time
+ * This will show TypeScript errors for invalid hook names
+ * 
+ * Usage:
+ * ```typescript
+ * // Define your hook types
+ * type AppHooks = {
+ *   navigate: () => NavigateFunction;
+ *   auth: () => AuthState;
+ * };
+ * 
+ * // Use with type checking
+ * useStrictHookService<AppHooks>(navService, 'navigate'); // ✅ Valid
+ * useStrictHookService<AppHooks>(navService, 'invalid');  // ❌ TypeScript Error
+ * ```
+ */
+export function useStrictHookService<THooks extends Record<string, ReactHook<any>>>(
+  service: HookService<any>,
+  hookName: keyof THooks & string
+): void {
+  useHookService(service, hookName);
+}
+
+/**
+ * 🆕 TYPE-SAFE HOOK ACCESS: Get hook value with compile-time type checking
+ */
+export function useTypedHook<
+  THooks extends Record<string, ReactHook<any>>,
+  K extends keyof THooks
+>(hookName: K): ExtractHookType<THooks[K]> {
+  const context = useHookContext();
+  return context[hookName as string] as any;
+}
+
+/**
+ * 🆕 STRICT TYPED HOOK ACCESS: Enforces valid hook names at compile time
+ */
+export function useStrictHook<THooks extends Record<string, ReactHook<any>>>(
+  hookName: keyof THooks & string
+): ExtractHookType<THooks[typeof hookName]> {
+  return useHook(hookName) as any;
 }
 
 /**
@@ -65,3 +109,6 @@ export function useHook<T = any>(hookName: string): T | undefined {
 export function useAllHooks(): Record<string, any> {
   return useHookContext();
 }
+
+// Helper type for extracting hook return types
+type ExtractHookType<T> = T extends ReactHook<infer R> ? R : never;

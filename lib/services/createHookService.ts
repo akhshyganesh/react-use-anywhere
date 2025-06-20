@@ -1,4 +1,4 @@
-import type { HookService } from '../types';
+import type { HookService, ReactHook, TypedHookService } from '../types';
 import { isHookRegistered, getRegisteredHookNames } from '../providers/HookInjectionProvider';
 
 /**
@@ -139,8 +139,53 @@ export function resetAllServices(): void {
  * @param hookName - Hook name (will be type-checked against registered hooks)
  */
 export function createTypedSingletonService<
-  THooks extends Record<string, any>,
+  THooks extends Record<string, ReactHook<any>>,
   K extends keyof THooks
->(hookName: K): HookService<THooks[K] extends () => infer R ? R : never> {
+>(hookName: K): HookService<ExtractHookType<THooks[K]>> {
   return createSingletonService(hookName as string);
 }
+
+/**
+ * 🆕 STRICT TYPE-SAFE VERSION: Enforces hook name validation at compile time
+ * This version will show TypeScript errors if you use invalid hook names
+ * 
+ * Usage:
+ * ```typescript
+ * // First, define your hooks type
+ * type MyHooks = {
+ *   navigate: () => NavigateFunction;
+ *   auth: () => AuthState;
+ * };
+ * 
+ * // Then create services with compile-time validation
+ * const navService = createStrictSingletonService<MyHooks>('navigate'); // ✅ Valid
+ * const badService = createStrictSingletonService<MyHooks>('invalid'); // ❌ TypeScript Error
+ * ```
+ */
+export function createStrictSingletonService<THooks extends Record<string, ReactHook<any>>>(
+  hookName: keyof THooks & string
+): HookService<ExtractHookType<THooks[typeof hookName]>> {
+  // Runtime validation still happens
+  validateHookName(hookName);
+  
+  if (!singletonServices.has(hookName)) {
+    singletonServices.set(hookName, createHookService());
+  }
+  return singletonServices.get(hookName)!;
+}
+
+/**
+ * 🆕 INFERRED TYPE-SAFE VERSION: Automatically infers types from provider
+ * This creates services that are automatically typed based on your HookProvider setup
+ */
+export function createInferredSingletonService<
+  THooks extends Record<string, ReactHook<any>>,
+  K extends keyof THooks
+>(
+  hookName: K
+): TypedHookService<ExtractHookType<THooks[K]>, THooks> {
+  return createSingletonService(hookName as string) as any;
+}
+
+// Helper type for extracting hook return types
+type ExtractHookType<T> = T extends ReactHook<infer R> ? R : never;

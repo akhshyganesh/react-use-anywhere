@@ -1,5 +1,6 @@
-import { createSingletonService } from '../../lib';
+import { createSingletonService, createTypedSingletonService } from '../../lib';
 import { logServiceCall } from './logger';
+import type { AppHooks } from '../App';
 
 // Define the theme hook type
 type ThemeHook = {
@@ -10,6 +11,9 @@ type ThemeHook = {
 
 // 🚀 STANDARD: Create a singleton service to use theme hook anywhere
 export const themeService = createSingletonService<ThemeHook>('theme');
+
+// 🆕 TYPE-SAFE VERSION: Create with compile-time type checking
+export const typedThemeService = createTypedSingletonService<AppHooks, 'theme'>('theme');
 
 // Helper functions you can use in any file
 export const toggleTheme = () => {

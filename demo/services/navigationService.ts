@@ -1,8 +1,12 @@
-import { createSingletonService } from '../../lib';
+import { createSingletonService, createTypedSingletonService } from '../../lib';
 import { logServiceCall } from './logger';
+import type { AppHooks } from '../App';
 
 // 🚀 STANDARD: Create a singleton service to use navigation hook anywhere
-export const navigationService = createSingletonService<(path: string) => void>('navigat');
+export const navigationService = createSingletonService<(path: string) => void>('navigation');
+
+// 🆕 TYPE-SAFE VERSION: Create with compile-time type checking
+export const typedNavigationService = createTypedSingletonService<AppHooks, 'navigation'>('navigation');
 
 // Helper functions you can use in any file
 export const goToLogin = () => {

@@ -1,11 +1,32 @@
 import React, { useState } from 'react';
-import { HookProvider } from '../lib';
+import { HookProvider, TypedHookProvider } from '../lib';
 import { Home } from './components/Home';
 import { Login } from './components/Login';
 import './assets/App.css';
 
+// Define hook types for type safety
+type NavigateFunction = (path: string) => void;
+type AuthState = {
+  user: { name: string; email: string } | null;
+  isAuthenticated: boolean;
+  login: (name: string, email: string) => void;
+  logout: () => void;
+};
+type ThemeState = {
+  theme: 'light' | 'dark';
+  isDark: boolean;
+  toggle: () => void;
+};
+
+// Define the app's hook types for type safety
+export type AppHooks = {
+  navigation: () => NavigateFunction;
+  auth: () => AuthState;
+  theme: () => ThemeState;
+};
+
 // Simple navigation hook for the demo
-const useNavigation = () => {
+const useNavigation = (): NavigateFunction => {
   return (path: string) => {
     console.log(`Navigating to: ${path}`);
     window.location.hash = path;
@@ -13,7 +34,7 @@ const useNavigation = () => {
 };
 
 // Simple auth hook for the demo
-const useAuth = () => {
+const useAuth = (): AuthState => {
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   
   return {
@@ -31,7 +52,7 @@ const useAuth = () => {
 };
 
 // Simple theme hook for the demo
-const useTheme = () => {
+const useTheme = (): ThemeState => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
   return {
@@ -60,16 +81,17 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Define hooks object with proper typing
+  const hooks: AppHooks = {
+    navigation: useNavigation,
+    auth: useAuth,
+    theme: useTheme,
+  };
+
   return (
-    <HookProvider
-      hooks={{
-        navigation: useNavigation,
-        auth: useAuth,
-        theme: useTheme,
-      }}
-    >
+    <TypedHookProvider hooks={hooks}>
       {currentPage === '/login' ? <Login /> : <Home />}
-    </HookProvider>
+    </TypedHookProvider>
   );
 };
 

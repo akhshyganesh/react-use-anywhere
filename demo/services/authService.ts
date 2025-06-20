@@ -1,6 +1,7 @@
-import { createSingletonService } from '../../lib';
+import { createSingletonService, createTypedSingletonService } from '../../lib';
 import { goToLogin } from './navigationService';
 import { logServiceCall } from './logger';
+import type { AppHooks } from '../App';
 
 // Define the auth hook type
 type AuthHook = {
@@ -12,6 +13,9 @@ type AuthHook = {
 
 // 🚀 STANDARD: Create a singleton service to use auth hook anywhere
 export const authService = createSingletonService<AuthHook>('auth');
+
+// 🆕 TYPE-SAFE VERSION: Create with compile-time type checking
+export const typedAuthService = createTypedSingletonService<AppHooks, 'auth'>('auth');
 
 // Helper functions you can use in any file
 export const checkAuth = () => {

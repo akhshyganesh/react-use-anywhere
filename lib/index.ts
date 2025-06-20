@@ -1,19 +1,35 @@
-// Provider component to wrap your app
-export { HookProvider, useHookContext } from './providers/HookInjectionProvider';
-
-// 🚀 RECOMMENDED: Create singleton services (standard approach)
+// Core exports
+export { HookProvider, TypedHookProvider, useHookContext, useTypedHookContext } from './providers/HookInjectionProvider';
 export { 
-  createSingletonService,
+  useHookService, 
+  useTypedHookService, 
+  useStrictHookService, 
+  useHook, 
+  useTypedHook, 
+  useStrictHook, 
+  useAllHooks 
+} from './hooks/useHookService';
+export { 
+  createHookService, 
+  createSingletonService, 
   getSingletonService, 
   resetAllServices,
-  createTypedSingletonService
+  createTypedSingletonService,
+  createStrictSingletonService,
+  createInferredSingletonService
 } from './services/createHookService';
 
-// ⚠️ ADVANCED: Only use if you need multiple independent instances
-export { createHookService } from './services/createHookService';
-
-// Connect services to hooks in React components
-export { useHookService, useHook, useAllHooks, useTypedHookService } from './hooks/useHookService';
-
-// Types
-export type { HookService, HookContext, HookProviderProps, ReactHook } from './types';
+// Type exports
+export type {
+  ReactHook,
+  HookService,
+  TypedHookService,
+  HookContext,
+  HookRegistry,
+  HookProviderProps,
+  TypedHookProviderProps,
+  ExtractHookType,
+  HookReturnTypes,
+  ServiceFactory,
+  TypedServiceFactory
+} from './types';

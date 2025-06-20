@@ -1,8 +1,6 @@
-import { ReactNode } from 'react';
+import React from 'react';
 
-/**
- * A React hook that returns a value
- */
+// Core hook type - represents any React hook function
 export type ReactHook<T = any> = () => T;
 
 /**
@@ -16,7 +14,7 @@ export interface HookContext {
  * Props for the HookProvider component
  */
 export interface HookProviderProps<T extends Record<string, ReactHook<any>> = Record<string, ReactHook<any>>> {
-  children: ReactNode;
+  children: React.ReactNode;
   hooks: T;
 }
 
@@ -53,3 +51,38 @@ export type HookNames<T extends Record<string, ReactHook<any>>> = keyof T;
  */
 export type HookReturnType<T extends Record<string, ReactHook<any>>, K extends keyof T> = 
   T[K] extends ReactHook<infer R> ? R : never;
+
+/**
+ * Branded type for validated hook names - prevents accidental string usage
+ */
+export type ValidatedHookName<T extends Record<string, ReactHook<any>>> = keyof T & string;
+
+/**
+ * Type-safe service interface that knows about valid hook names
+ */
+export interface TypedHookService<T = any, THooks extends Record<string, ReactHook<any>> = Record<string, ReactHook<any>>> extends HookService<T> {
+  readonly _hookNames?: THooks; // Phantom property for type information
+}
+
+/**
+ * Provider props with better type inference
+ */
+export interface TypedHookProviderProps<T extends Record<string, ReactHook<any>>> {
+  children: React.ReactNode;
+  hooks: T;
+}
+
+/**
+ * Utility types for extracting hook return types
+ */
+export type ExtractHookType<T> = T extends ReactHook<infer R> ? R : never;
+
+export type HookReturnTypes<T extends Record<string, ReactHook<any>>> = {
+  [K in keyof T]: ExtractHookType<T[K]>;
+};
+
+/**
+ * Service factory types
+ */
+export type ServiceFactory<T> = () => HookService<T>;
+export type TypedServiceFactory<T, THooks extends Record<string, ReactHook<any>>> = () => TypedHookService<T, THooks>;
