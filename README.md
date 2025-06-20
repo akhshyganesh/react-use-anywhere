@@ -9,6 +9,7 @@
 ## 🎯 Why This Library Exists
 
 Have you ever wanted to:
+
 - **Call navigation from a service layer?** (e.g., redirect after API calls)
 - **Access user authentication state in utility functions?**
 - **Update theme from business logic files?**
@@ -81,7 +82,7 @@ import { navigationService } from '../services/navigationService';
 function SomeComponent() {
   // This makes the navigate hook available in navigationService
   useHookService(navigationService, 'navigate');
-  
+
   return <div>Your component</div>;
 }
 ```
@@ -130,11 +131,13 @@ const navService = createTypedSingletonService<AppHooks, 'navigate'>('navigate')
 ## 📖 Common Use Cases
 
 ### 🔐 Authentication Service
+
 ```typescript
 // services/authService.ts
 import { createSingletonService } from 'react-use-anywhere';
 
 export const authService = createSingletonService('auth');
+export const navigationService = createSingletonService('navigate');
 
 export const requireAuth = () => {
   return authService.use((auth) => {
@@ -153,6 +156,7 @@ export const getCurrentUser = () => {
 ```
 
 ### 🎨 Theme Service
+
 ```typescript
 // services/themeService.ts
 export const themeService = createSingletonService('theme');
@@ -169,6 +173,7 @@ export const applyThemeToBody = () => {
 ```
 
 ### 🌐 API Service with Auto-Redirect
+
 ```typescript
 // services/apiService.ts
 import { requireAuth, logout } from './authService';
@@ -177,16 +182,16 @@ import { goToLogin } from './navigationService';
 export const apiCall = async (endpoint: string) => {
   // Check auth before API call
   if (!requireAuth()) return;
-  
+
   try {
     const response = await fetch(endpoint);
-    
+
     if (response.status === 401) {
       logout(); // Clear auth state
       goToLogin(); // Redirect to login
       throw new Error('Unauthorized');
     }
-    
+
     return response.json();
   } catch (error) {
     // Handle errors with navigation
@@ -201,6 +206,7 @@ export const apiCall = async (endpoint: string) => {
 ## 🏗️ Architecture Patterns
 
 ### Clean Architecture with Services
+
 ```
 src/
 ├── components/          # React components
@@ -213,6 +219,7 @@ src/
 ```
 
 ### Service Layer Benefits
+
 - **Separation of Concerns**: Keep business logic out of components
 - **Reusability**: Use the same logic across multiple components
 - **Testability**: Easy to test business logic independently
@@ -223,32 +230,82 @@ src/
 ### Core Functions
 
 #### `createSingletonService<T>(hookName: string)`
+
 Creates a singleton service for accessing hook values.
 
 #### `useHookService(service, hookName)`
+
 Connects a service to a hook value in React components.
 
 #### `useHook<T>(hookName: string)`
+
 Directly access hook values in React components.
+
+#### `useAllHooks()`
+
+Get all hook values from the context.
 
 ### Type-Safe Functions
 
 #### `createTypedSingletonService<THooks, K>(hookName: K)`
+
 Type-safe version with compile-time validation.
 
+#### `createStrictSingletonService<THooks>(hookName: keyof THooks)`
+
+Enforces valid hook names at compile time.
+
+#### `createInferredSingletonService<THooks, K>(hookName: K)`
+
+Automatically infers types from provider setup.
+
 #### `TypedHookProvider<THooks>`
+
 Type-safe provider with hook type validation.
+
+#### `useTypedHookService<THooks, K>(service, hookName)`
+
+Type-safe version of useHookService.
+
+#### `useStrictHookService<THooks>(service, hookName)`
+
+Enforces valid hook names at compile time.
+
+#### `useTypedHook<THooks, K>(hookName)`
+
+Type-safe direct hook access.
+
+#### `useStrictHook<THooks>(hookName)`
+
+Strict type-safe direct hook access.
 
 ### Service Methods
 
 #### `service.use(callback)`
+
 Execute code with the current hook value.
 
 #### `service.get()`
+
 Get the current hook value (or null if not ready).
 
 #### `service.isReady()`
+
 Check if the service has a hook value available.
+
+### Additional Functions
+
+#### `getSingletonService<T>(hookName: string)`
+
+Get an existing singleton service.
+
+#### `resetAllServices()`
+
+Reset all singleton services (useful for testing).
+
+#### `createHookService<T>()`
+
+Creates a service instance (use createSingletonService instead for better performance).
 
 ## 🎮 Try the Demo
 
@@ -262,6 +319,7 @@ npm run dev
 ```
 
 The demo shows:
+
 - 🔐 Authentication flow with service-based login/logout
 - 🎨 Theme switching from service layer
 - 🧭 Navigation from non-React files
@@ -271,12 +329,14 @@ The demo shows:
 ## 🤝 When NOT to Use This
 
 This library is great for:
+
 - ✅ Service layers and business logic
 - ✅ Utility functions that need React state
 - ✅ API clients that need navigation/auth
 - ✅ Complex applications with clear architecture
 
 Don't use it for:
+
 - ❌ Simple prop drilling (just pass props)
 - ❌ Component-to-component communication (use standard React patterns)
 - ❌ Everything (still use normal React patterns where appropriate)
