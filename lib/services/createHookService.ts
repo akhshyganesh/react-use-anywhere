@@ -1,4 +1,5 @@
 import type { HookService } from '../types';
+import { isHookRegistered, getRegisteredHookNames } from '../providers/HookInjectionProvider';
 
 /**
  * Creates a service that can store and use hook values from anywhere in your code
@@ -59,6 +60,39 @@ export function createHookService<T = any>(): HookService<T> {
 const singletonServices = new Map<string, HookService<any>>();
 
 /**
+ * Validate that the hook name is registered
+ */
+function validateHookName(hookName: string): void {
+  const registeredHooks = getRegisteredHookNames();
+  
+  if (registeredHooks.length === 0) {
+    console.warn(
+      `🚨 No hooks registered yet. Make sure to wrap your app with HookProvider first.\n` +
+      `Example: <HookProvider hooks={{ ${hookName}: your${hookName.charAt(0).toUpperCase() + hookName.slice(1)}Hook }}>`
+    );
+    return;
+  }
+  
+  if (!isHookRegistered(hookName)) {
+    const suggestions = registeredHooks
+      .filter(name => name.toLowerCase().includes(hookName.toLowerCase()) || 
+                     hookName.toLowerCase().includes(name.toLowerCase()))
+      .slice(0, 3);
+    
+    const suggestionText = suggestions.length > 0 
+      ? `\nDid you mean one of these?\n${suggestions.map(s => `  • "${s}"`).join('\n')}`
+      : '';
+    
+    console.error(
+      `🚨 Hook "${hookName}" is not registered in HookProvider.\n` +
+      `Available hooks: ${registeredHooks.map(h => `"${h}"`).join(', ')}${suggestionText}\n\n` +
+      `💡 Make sure your HookProvider includes:\n` +
+      `<HookProvider hooks={{ ${hookName}: your${hookName.charAt(0).toUpperCase() + hookName.slice(1)}Hook, ...other hooks }}>`
+    );
+  }
+}
+
+/**
  * 🚀 RECOMMENDED: Create or get a singleton service
  * 
  * This is the standard way to create services in react-use-anywhere.
@@ -68,20 +102,24 @@ const singletonServices = new Map<string, HookService<any>>();
  * - ✅ Consistent behavior across components
  * - ✅ Memory efficient
  * 
- * @param serviceId - Unique identifier for the service
+ * @param hookName - Name of the hook as registered in HookProvider
  */
-export function createSingletonService<T = any>(serviceId: string): HookService<T> {
-  if (!singletonServices.has(serviceId)) {
-    singletonServices.set(serviceId, createHookService<T>());
+export function createSingletonService<T = any>(hookName: string): HookService<T> {
+  // Validate hook name at runtime
+  validateHookName(hookName);
+  
+  if (!singletonServices.has(hookName)) {
+    singletonServices.set(hookName, createHookService<T>());
   }
-  return singletonServices.get(serviceId)!;
+  return singletonServices.get(hookName)!;
 }
 
 /**
  * Get an existing singleton service
  */
-export function getSingletonService<T = any>(serviceId: string): HookService<T> | null {
-  return singletonServices.get(serviceId) || null;
+export function getSingletonService<T = any>(hookName: string): HookService<T> | null {
+  validateHookName(hookName);
+  return singletonServices.get(hookName) || null;
 }
 
 /**
@@ -92,4 +130,17 @@ export function resetAllServices(): void {
     (service as any)._reset();
   });
   singletonServices.clear();
+}
+
+/**
+ * 🆕 TYPE-SAFE VERSION: Create a service with full type safety
+ * Use this when you want compile-time checking of hook names
+ * 
+ * @param hookName - Hook name (will be type-checked against registered hooks)
+ */
+export function createTypedSingletonService<
+  THooks extends Record<string, any>,
+  K extends keyof THooks
+>(hookName: K): HookService<THooks[K] extends () => infer R ? R : never> {
+  return createSingletonService(hookName as string);
 }

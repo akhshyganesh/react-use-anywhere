@@ -1,14 +1,22 @@
 import React, { createContext, useContext } from 'react';
-import type { HookContext, HookProviderProps } from '../types';
+import type { HookContext, HookProviderProps, HookRegistry } from '../types';
 
 // Create the context
 const HookContextValue = createContext<HookContext | null>(null);
+
+// Global hook registry to track registered hooks
+let globalHookRegistry: HookRegistry = {};
 
 /**
  * Provider component that makes hooks available throughout your app
  * Wrap your app with this provider and pass in your hooks
  */
-export const HookProvider: React.FC<HookProviderProps> = ({ children, hooks }) => {
+export const HookProvider = <T extends Record<string, any>>(
+  { children, hooks }: HookProviderProps<T>
+): JSX.Element => {
+  // Register hooks globally for type checking
+  globalHookRegistry = hooks;
+  
   // Execute all hooks at the top level - we can't use useMemo here because it would violate Rules of Hooks
   const hookValues: Record<string, any> = {};
   
@@ -40,4 +48,23 @@ export const useHookContext = (): HookContext => {
   }
   
   return context;
+};
+
+/**
+ * Get the current hook registry (for internal use)
+ */
+export const getHookRegistry = (): HookRegistry => globalHookRegistry;
+
+/**
+ * Check if a hook name is registered
+ */
+export const isHookRegistered = (hookName: string): boolean => {
+  return hookName in globalHookRegistry;
+};
+
+/**
+ * Get all registered hook names
+ */
+export const getRegisteredHookNames = (): string[] => {
+  return Object.keys(globalHookRegistry);
 };

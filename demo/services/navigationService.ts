@@ -2,7 +2,7 @@ import { createSingletonService } from '../../lib';
 import { logServiceCall } from './logger';
 
 // 🚀 STANDARD: Create a singleton service to use navigation hook anywhere
-export const navigationService = createSingletonService<(path: string) => void>('navigation');
+export const navigationService = createSingletonService<(path: string) => void>('navigat');
 
 // Helper functions you can use in any file
 export const goToLogin = () => {

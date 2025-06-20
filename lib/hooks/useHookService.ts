@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useHookContext } from '../providers/HookInjectionProvider';
+import { useHookContext, isHookRegistered, getRegisteredHookNames } from '../providers/HookInjectionProvider';
 import type { HookService } from '../types';
 
 /**
@@ -9,12 +9,45 @@ import type { HookService } from '../types';
 export function useHookService<T = any>(service: HookService<T>, hookName: string): void {
   const context = useHookContext();
   
+  // Validate hook name
+  useEffect(() => {
+    if (!isHookRegistered(hookName)) {
+      const registeredHooks = getRegisteredHookNames();
+      const suggestions = registeredHooks
+        .filter(name => name.toLowerCase().includes(hookName.toLowerCase()) || 
+                       hookName.toLowerCase().includes(name.toLowerCase()))
+        .slice(0, 3);
+      
+      const suggestionText = suggestions.length > 0 
+        ? `\nDid you mean one of these?\n${suggestions.map(s => `  • "${s}"`).join('\n')}`
+        : '';
+      
+      console.error(
+        `🚨 useHookService: Hook "${hookName}" is not registered in HookProvider.\n` +
+        `Available hooks: ${registeredHooks.map(h => `"${h}"`).join(', ')}${suggestionText}`
+      );
+    }
+  }, [hookName]);
+  
   useEffect(() => {
     const hookValue = context[hookName];
     if (hookValue !== undefined) {
       service._setValue(hookValue);
     }
   }, [context, hookName, service]);
+}
+
+/**
+ * 🆕 TYPE-SAFE VERSION: Connect service with compile-time type checking
+ */
+export function useTypedHookService<
+  THooks extends Record<string, any>,
+  K extends keyof THooks
+>(
+  service: HookService<THooks[K] extends () => infer R ? R : never>,
+  hookName: K
+): void {
+  useHookService(service, hookName as string);
 }
 
 /**
