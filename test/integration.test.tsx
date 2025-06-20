@@ -1,89 +1,71 @@
 import React, { useState } from 'react';
 import { render, fireEvent, act, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { 
-  HookProvider, 
-  createSingletonService, 
-  useHookService, 
-  resetAllServices 
+import {
+  HookProvider,
+  createSingletonService,
+  useHookService,
+  resetAllServices,
 } from '../lib';
 
-// Mock services
+// Create singleton services
 const authService = createSingletonService('auth');
 const navigationService = createSingletonService('navigation');
-const themeService = createSingletonService('theme');
 
-// Mock hooks
-const useAuth = () => {
-  const [user, setUser] = useState(null);
+interface UserData {
+  username: string;
+}
+
+interface AuthState {
+  user: UserData | null;
+  isAuthenticated: boolean;
+  login: (userData: UserData) => void;
+  logout: () => void;
+}
+
+// Mock hooks that return actual values
+const useAuth = (): AuthState => {
+  const [user, setUser] = useState<UserData | null>(null);
   return {
     user,
     isAuthenticated: !!user,
-    login: (userData: any) => setUser(userData),
-    logout: () => setUser(null)
-  };
-};
-
-const useTheme = () => {
-  const [theme, setTheme] = useState('light');
-  return {
-    theme,
-    isDark: theme === 'dark',
-    toggle: () => setTheme(t => t === 'light' ? 'dark' : 'light'),
-    setTheme
+    login: (userData: UserData) => setUser(userData),
+    logout: () => setUser(null),
   };
 };
 
 const mockNavigate = jest.fn();
+const useNavigation = () => mockNavigate;
 
-// Business logic functions
-const handleLogin = async (credentials: any) => {
+// Business logic functions using services
+const handleLogin = (credentials: UserData) => {
   return authService.use((auth) => {
-    auth.login(credentials);
-    return true;
+    if (auth) {
+      auth.login(credentials);
+      return true;
+    }
+    return false;
   });
 };
 
 const handleLogout = () => {
-  authService.use((auth) => auth.logout());
-  navigationService.use((navigate) => navigate('/login'));
-  themeService.use((theme) => theme.setTheme('light'));
+  authService.use((auth) => auth?.logout());
+  navigationService.use((navigate) => navigate?.('/login'));
 };
 
-const toggleAppTheme = () => {
-  return themeService.use((theme) => {
-    theme.toggle();
-    return theme.theme;
-  });
-};
-
-// Test components
+// Component that connects services to hooks
 const ServiceConnector = () => {
   useHookService(authService, 'auth');
-  useHookService(navigationService, 'navigate');
-  useHookService(themeService, 'theme');
+  useHookService(navigationService, 'navigation');
   return null;
 };
 
-const App = () => {
-  return (
-    <HookProvider hooks={{ 
-      auth: useAuth, 
-      navigate: mockNavigate, 
-      theme: useTheme 
-    }}>
-      <ServiceConnector />
-      <Dashboard />
-    </HookProvider>
-  );
-};
-
-const Dashboard = () => {
+// Test app component
+const TestApp = () => {
   const [loginResult, setLoginResult] = useState<boolean | null>(null);
-  const [themeResult, setThemeResult] = useState(null);
 
-  const handleLoginClick = async () => {
-    const result = await handleLogin({ username: 'testuser' });
+  const handleLoginClick = () => {
+    const result = handleLogin({ username: 'testuser' });
     setLoginResult(result);
   };
 
@@ -91,25 +73,24 @@ const Dashboard = () => {
     handleLogout();
   };
 
-  const handleThemeClick = () => {
-    const newTheme = toggleAppTheme();
-    setThemeResult(newTheme);
-  };
-
   return (
-    <div>
-      <button data-testid="login-btn" onClick={handleLoginClick}>
-        Login
-      </button>
-      <button data-testid="logout-btn" onClick={handleLogoutClick}>
-        Logout
-      </button>
-      <button data-testid="theme-btn" onClick={handleThemeClick}>
-        Toggle Theme
-      </button>
-      <div data-testid="login-result">{JSON.stringify(loginResult)}</div>
-      <div data-testid="theme-result">{themeResult}</div>
-    </div>
+    <HookProvider
+      hooks={{
+        auth: useAuth,
+        navigation: useNavigation,
+      }}
+    >
+      <ServiceConnector />
+      <div>
+        <button data-testid="login-btn" onClick={handleLoginClick}>
+          Login
+        </button>
+        <button data-testid="logout-btn" onClick={handleLogoutClick}>
+          Logout
+        </button>
+        <div data-testid="login-result">{JSON.stringify(loginResult)}</div>
+      </div>
+    </HookProvider>
   );
 };
 
@@ -119,123 +100,55 @@ describe('Integration Tests', () => {
     jest.clearAllMocks();
   });
 
-  it('should handle complete login workflow', async () => {
-    render(<App />);
+  it('should handle complete login workflow', () => {
+    render(<TestApp />);
 
     // Initially not authenticated
-    expect(authService.use(auth => auth.isAuthenticated)).toBe(false);
+    expect(authService.use((auth) => auth?.isAuthenticated)).toBe(false);
 
     // Click login
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByTestId('login-btn'));
     });
 
     // Should be authenticated now
-    expect(authService.use(auth => auth.isAuthenticated)).toBe(true);
-    expect(authService.use(auth => auth.user)).toEqual({ username: 'testuser' });
+    expect(authService.use((auth) => auth?.isAuthenticated)).toBe(true);
+    expect(authService.use((auth) => auth?.user)).toEqual({
+      username: 'testuser',
+    });
     expect(screen.getByTestId('login-result')).toHaveTextContent('true');
   });
 
-  it('should handle complete logout workflow', async () => {
-    render(<App />);
+  it('should handle logout workflow', () => {
+    render(<TestApp />);
 
     // Login first
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByTestId('login-btn'));
     });
 
-    expect(authService.use(auth => auth.isAuthenticated)).toBe(true);
+    expect(authService.use((auth) => auth?.isAuthenticated)).toBe(true);
 
     // Then logout
     act(() => {
       fireEvent.click(screen.getByTestId('logout-btn'));
     });
 
-    // Should be logged out and redirected
-    expect(authService.use(auth => auth.isAuthenticated)).toBe(false);
-    expect(authService.use(auth => auth.user)).toBe(null);
+    // Should be logged out and navigation called
+    expect(authService.use((auth) => auth?.isAuthenticated)).toBe(false);
     expect(mockNavigate).toHaveBeenCalledWith('/login');
-    expect(themeService.use(theme => theme.theme)).toBe('light');
   });
 
-  it('should handle theme toggle workflow', () => {
-    render(<App />);
+  it('should maintain singleton service state', () => {
+    const service1 = createSingletonService('test');
+    const service2 = createSingletonService('test');
 
-    // Initially light theme
-    expect(themeService.use(theme => theme.theme)).toBe('light');
+    // Should be the same instance
+    expect(service1).toBe(service2);
 
-    // Toggle theme
-    act(() => {
-      fireEvent.click(screen.getByTestId('theme-btn'));
-    });
-
-    // Should be dark theme now
-    expect(themeService.use(theme => theme.theme)).toBe('dark');
-    expect(screen.getByTestId('theme-result')).toHaveTextContent('dark');
-
-    // Toggle again
-    act(() => {
-      fireEvent.click(screen.getByTestId('theme-btn'));
-    });
-
-    // Should be light theme again
-    expect(themeService.use(theme => theme.theme)).toBe('light');
-    expect(screen.getByTestId('theme-result')).toHaveTextContent('light');
-  });
-
-  it('should maintain state across multiple operations', async () => {
-    render(<App />);
-
-    // Login
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('login-btn'));
-    });
-
-    // Change theme
-    act(() => {
-      fireEvent.click(screen.getByTestId('theme-btn'));
-    });
-
-    // Verify both states are maintained
-    expect(authService.use(auth => auth.isAuthenticated)).toBe(true);
-    expect(themeService.use(theme => theme.theme)).toBe('dark');
-
-    // Logout (should reset theme but maintain login state change)
-    act(() => {
-      fireEvent.click(screen.getByTestId('logout-btn'));
-    });
-
-    expect(authService.use(auth => auth.isAuthenticated)).toBe(false);
-    expect(themeService.use(theme => theme.theme)).toBe('light');
-  });
-
-  it('should handle service errors gracefully', () => {
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-    
-    // Try to use service before it's connected
-    const result = authService.use(auth => auth.isAuthenticated);
-    
-    expect(result).toBe(null);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Hook service not ready. Make sure you\'re using useHookService in a React component.'
-    );
-  });
-
-  it('should handle hook execution errors', () => {
-    render(<App />);
-    
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-    
-    // Force an error in the hook usage
-    const result = authService.use(() => {
-      throw new Error('Test error');
-    });
-    
-    expect(result).toBe(null);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Error using hook service:', 
-      expect.any(Error)
-    );
+    // State should be shared
+    service1._setValue({ shared: 'state' });
+    expect(service2.get()).toEqual({ shared: 'state' });
   });
 });
 

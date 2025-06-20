@@ -1,5 +1,11 @@
 import React, { createContext, useContext } from 'react';
-import type { HookContext, HookProviderProps, HookRegistry, ReactHook, TypedHookProviderProps } from '../types';
+import type {
+  HookContext,
+  HookProviderProps,
+  HookRegistry,
+  ReactHook,
+  TypedHookProviderProps,
+} from '../types';
 
 // Create the context
 const HookContextValue = createContext<HookContext | null>(null);
@@ -14,15 +20,16 @@ type RegisteredHooks = typeof globalHookRegistry;
  * Provider component that makes hooks available throughout your app
  * Wrap your app with this provider and pass in your hooks
  */
-export const HookProvider = <T extends Record<string, any>>(
-  { children, hooks }: HookProviderProps<T>
-): JSX.Element => {
+export const HookProvider = <T extends Record<string, ReactHook<unknown>>>({
+  children,
+  hooks,
+}: HookProviderProps<T>): React.ReactElement => {
   // Register hooks globally for type checking
   globalHookRegistry = hooks;
-  
+
   // Execute all hooks at the top level - we can't use useMemo here because it would violate Rules of Hooks
-  const hookValues: Record<string, any> = {};
-  
+  const hookValues: Record<string, unknown> = {};
+
   Object.entries(hooks).forEach(([name, hook]) => {
     try {
       hookValues[name] = hook();
@@ -42,9 +49,12 @@ export const HookProvider = <T extends Record<string, any>>(
 /**
  * 🆕 TYPE-SAFE PROVIDER: Provides compile-time hook name validation
  */
-export const TypedHookProvider = <T extends Record<string, ReactHook<any>>>(
-  { children, hooks }: TypedHookProviderProps<T>
-): JSX.Element => {
+export const TypedHookProvider = <
+  T extends Record<string, ReactHook<unknown>>,
+>({
+  children,
+  hooks,
+}: TypedHookProviderProps<T>): React.ReactElement => {
   return HookProvider({ children, hooks });
 };
 
@@ -54,21 +64,25 @@ export const TypedHookProvider = <T extends Record<string, ReactHook<any>>>(
  */
 export const useHookContext = (): HookContext => {
   const context = useContext(HookContextValue);
-  
+
   if (context === null) {
     throw new Error('useHookContext must be used within a HookProvider');
   }
-  
+
   return context;
 };
 
 /**
  * 🆕 TYPE-SAFE CONTEXT HOOK: Returns typed hook context
  */
-export function useTypedHookContext<T extends Record<string, ReactHook<any>>>(): {
+export function useTypedHookContext<
+  T extends Record<string, ReactHook<unknown>>,
+>(): {
   [K in keyof T]: ExtractHookType<T[K]>;
 } {
-  return useHookContext() as any;
+  return useHookContext() as {
+    [K in keyof T]: ExtractHookType<T[K]>;
+  };
 }
 
 /**
