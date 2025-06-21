@@ -4,7 +4,7 @@ Experience React Use Anywhere in action! This demo shows how you can use React h
 
 ## Live Demo
 
-<img src="/public/demo-picture.png" alt="react-use-anywhere-demo-picture">
+<img src="https://raw.githubusercontent.com/akhshyganesh/react-use-anywhere/refs/heads/feature/enhance-documentation/docs/public/demo-picture.jpeg" alt="react-use-anywhere-demo-picture">
 
 _The demo is running in an embedded iframe above. You can interact with it directly!_
 
