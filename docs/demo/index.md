@@ -2,17 +2,11 @@
 
 Experience React Use Anywhere in action! This demo shows how you can use React hooks from service layers to handle authentication, navigation, and theme management.
 
-<!-- ## Live Demo
+## Live Demo
 
-<iframe
-  src="/react-use-anywhere/demo-app/"
-  width="100%"
-  height="600px"
-  style="border: 1px solid #ddd; border-radius: 8px;"
-  title="React Use Anywhere Demo">
-</iframe>
+<img src="/public/demo-picture.png" alt="react-use-anywhere-demo-picture">
 
-*The demo is running in an embedded iframe above. You can interact with it directly!* -->
+_The demo is running in an embedded iframe above. You can interact with it directly!_
 
 ## What You'll See
 
