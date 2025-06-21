@@ -47,11 +47,30 @@ export const login = async (credentials) => {
 npm install react-use-anywhere
 ```
 
-### 2. Wrap your app
+### 2. Create a simple auth hook
+
+```tsx
+// hooks/useAuth.ts
+import { useState } from 'react';
+
+export const useAuth = () => {
+  const [user, setUser] = useState(null);
+
+  return {
+    user,
+    setUser,
+    clearUser: () => setUser(null),
+    isAuthenticated: !!user,
+  };
+};
+```
+
+### 3. Wrap your app
 
 ```tsx
 import { HookProvider } from 'react-use-anywhere';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './hooks/useAuth';
 
 function App() {
   return (
@@ -62,7 +81,7 @@ function App() {
 }
 ```
 
-### 3. Create services
+### 4. Create services
 
 ```ts
 import { createSingletonService } from 'react-use-anywhere';
@@ -76,7 +95,7 @@ export const logout = () => {
 };
 ```
 
-### 4. Connect in components
+### 5. Connect in components
 
 ```tsx
 import { useHookService } from 'react-use-anywhere';
