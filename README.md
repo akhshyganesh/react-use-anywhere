@@ -254,11 +254,11 @@ src/
 
 ## ✨ Why Developers Love React Use Anywhere
 
-> "Reduced our state management code by 70% and eliminated all prop drilling!" - Sarah K.
+> "Reduced our state management code by 70% and eliminated all prop drilling!"
 
-> "Testing became so much easier when we could mock services independently." - Mike R.
+> "Testing became so much easier when we could mock services independently."
 
-> "Finally, a library that doesn't fight React - it enhances it!" - Alex T.
+> "Finally, a library that doesn't fight React - it enhances it!"
 
 - 🎯 **Use hooks anywhere** - Not just in React components
 - 🏗️ **Clean architecture** - Perfect for service layers and business logic
