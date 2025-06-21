@@ -1,256 +1,363 @@
 # Authentication Examples
 
-Complete authentication examples using React Use Anywhere for clean, service-oriented authentication flows.
+Complete authentication flows you can copy-paste into your React application.
 
-## Basic Authentication Service
+## Basic Login/Logout Flow
 
-A complete authentication service that handles login, logout, and session management:
+```tsx
+// App.tsx - Setup authentication provider
+import { HookProvider } from 'react-use-anywhere';
+import { useNavigate } from 'react-router-dom';
 
-```typescript
-// services/authService.ts
+function App() {
+  return (
+    <HookProvider
+      hooks={{
+        navigation: useNavigate,
+        auth: useAuth,
+        notifications: useNotifications,
+      }}
+    >
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Routes>
+      </BrowserRouter>
+    </HookProvider>
+  );
+}
+```
+
+```ts
+// services/auth.ts - Complete authentication service
 import { createSingletonService } from 'react-use-anywhere';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'user';
-  avatar?: string;
-}
-
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-// Create services for different hooks
 export const authService = createSingletonService('auth');
-export const navigationService = createSingletonService('navigate');
-export const notificationsService = createSingletonService('notifications');
+export const navigationService = createSingletonService('navigation');
+export const notificationService = createSingletonService('notifications');
 
-export const login = async (credentials: LoginCredentials) => {
+export const login = async (email: string, password: string) => {
   try {
-    // Set loading state
-    authService.use((auth) => {
-      auth.setLoading(true);
-    });
+    notificationService.use((notify) => notify.info('Signing in...'));
 
-    // API call to authenticate
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials),
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Invalid email or password');
+      }
+      throw new Error('Login failed');
+    }
+
+    const { user, token } = await response.json();
+
+    // Store token
+    localStorage.setItem('authToken', token);
+
+    // Update auth state
+    authService.use((auth) => auth.setUser(user));
+
+    // Show success message
+    notificationService.use((notify) =>
+      notify.success(`Welcome back, ${user.name}!`)
+    );
+
+    // Navigate to dashboard
+    navigationService.use((navigate) => navigate('/dashboard'));
+
+    return user;
+  } catch (error) {
+    notificationService.use((notify) =>
+      notify.error(error.message || 'Login failed')
+    );
+    throw error;
+  }
+};
+
+export const logout = () => {
+  // Clear token
+  localStorage.removeItem('authToken');
+
+  // Clear user state
+  authService.use((auth) => auth.clearUser());
+
+  // Show message
+  notificationService.use((notify) => notify.info('Logged out successfully'));
+
+  // Navigate to login
+  navigationService.use((navigate) => navigate('/login'));
+};
+
+export const signup = async (userData: {
+  name: string;
+  email: string;
+  password: string;
+}) => {
+  try {
+    notificationService.use((notify) => notify.info('Creating account...'));
+
+    const response = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Login failed');
+      throw new Error(error.message || 'Signup failed');
     }
 
     const { user, token } = await response.json();
 
-    // Store auth token
+    // Store token
     localStorage.setItem('authToken', token);
 
     // Update auth state
-    authService.use((auth) => {
-      auth.setUser(user);
-    });
+    authService.use((auth) => auth.setUser(user));
 
     // Show success message
-    notificationsService.use((notifications) => {
-      notifications.addNotification({
-        type: 'success',
-        message: `Welcome back, ${user.name}!`,
-      });
-    });
+    notificationService.use((notify) =>
+      notify.success('Account created successfully!')
+    );
 
-    // Navigate based on user role
-    navigationService.use((navigate) => {
-      if (user.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
-    });
+    // Navigate to dashboard
+    navigationService.use((navigate) => navigate('/dashboard'));
 
     return user;
   } catch (error) {
-    notificationsService.use((notifications) => {
-      notifications.addNotification({
-        type: 'error',
-        message: error.message || 'Login failed',
-      });
-    });
+    notificationService.use((notify) =>
+      notify.error(error.message || 'Failed to create account')
+    );
     throw error;
-  } finally {
-    authService.use((auth) => {
-      auth.setLoading(false);
-    });
   }
 };
 
-export const logout = async () => {
-  try {
-    // Call logout API
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-      },
-    });
-  } catch (error) {
-    console.warn('Logout API call failed:', error);
-  } finally {
-    // Clear local state regardless of API success
-    localStorage.removeItem('authToken');
+export const checkAuthStatus = async () => {
+  const token = localStorage.getItem('authToken');
 
-    authService.use((auth) => {
-      auth.clearUser();
-    });
-
-    notificationsService.use((notifications) => {
-      notifications.addNotification({
-        type: 'info',
-        message: 'You have been logged out',
-      });
-    });
-
-    navigationService.use((navigate) => {
-      navigate('/login');
-    });
+  if (!token) {
+    return false;
   }
-};
 
-export const refreshToken = async () => {
   try {
-    const currentToken = localStorage.getItem('authToken');
-    if (!currentToken) {
-      throw new Error('No token found');
+    const response = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.ok) {
+      const user = await response.json();
+      authService.use((auth) => auth.setUser(user));
+      return true;
+    } else {
+      // Invalid token
+      logout();
+      return false;
     }
+  } catch (error) {
+    // Network error
+    logout();
+    return false;
+  }
+};
 
-    const response = await fetch('/api/auth/refresh', {
+export const updatePassword = async (
+  currentPassword: string,
+  newPassword: string
+) => {
+  try {
+    const token = localStorage.getItem('authToken');
+
+    const response = await fetch('/api/auth/change-password', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${currentToken}`,
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
       },
+      body: JSON.stringify({ currentPassword, newPassword }),
     });
 
     if (!response.ok) {
-      throw new Error('Token refresh failed');
+      if (response.status === 401) {
+        throw new Error('Current password is incorrect');
+      }
+      throw new Error('Failed to update password');
     }
 
-    const { user, token } = await response.json();
+    notificationService.use((notify) =>
+      notify.success('Password updated successfully')
+    );
 
-    localStorage.setItem('authToken', token);
-
-    authService.use((auth) => {
-      auth.setUser(user);
-    });
-
-    return user;
+    return true;
   } catch (error) {
-    // Token is invalid, clear auth state
-    localStorage.removeItem('authToken');
-
-    authService.use((auth) => {
-      auth.clearUser();
-    });
-
-    navigationService.use((navigate) => {
-      navigate('/login');
-    });
-
+    notificationService.use((notify) =>
+      notify.error(error.message || 'Failed to update password')
+    );
     throw error;
   }
 };
-
-export const getCurrentUser = () => {
-  return authService.use((auth) => {
-    return auth.user;
-  });
-};
-
-export const isAuthenticated = () => {
-  return authService.use((auth) => {
-    return auth.isAuthenticated;
-  });
-};
 ```
+
+## Protected Routes & Route Guards
+
+```tsx
+// components/ProtectedRoute.tsx - Route protection
+import { useEffect, useState } from 'react';
+import { useHookService } from 'react-use-anywhere';
+import { authService, checkAuthStatus } from '../services/auth';
+
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Connect auth service
+  useHookService(authService, 'auth');
+
+  useEffect(() => {
+    checkAuthStatus().then((isAuth) => {
+      setIsAuthenticated(isAuth);
+      setIsLoading(false);
+    });
+  }, []);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <div>Redirecting to login...</div>;
+  }
+
+  return <>{children}</>;
+}
+```
+
+## Using the Authentication System
+
+### Setup your hooks:
+
+```tsx
+// hooks/useAuth.ts
+import { useState } from 'react';
+
+export function useAuth() {
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  return {
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    setUser,
+    clearUser: () => setUser(null),
+    setLoading,
+  };
+}
+
+// hooks/useNotifications.ts
+import { useState } from 'react';
+
+export function useNotifications() {
+  const [notifications, setNotifications] = useState([]);
+
+  return {
+    notifications,
+    info: (message: string) => console.log('Info:', message),
+    success: (message: string) => console.log('Success:', message),
+    error: (message: string) => console.log('Error:', message),
+  };
+}
+```
+
+### Connect services in your app:
+
+```tsx
+// components/AuthProvider.tsx
+import { useHookService } from 'react-use-anywhere';
+import {
+  authService,
+  navigationService,
+  notificationService,
+  checkAuthStatus,
+} from '../services/auth';
+import { useEffect } from 'react';
+
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  // Connect all auth services
+  useHookService(authService, 'auth');
+  useHookService(navigationService, 'navigation');
+  useHookService(notificationService, 'notifications');
+
+  useEffect(() => {
+    // Check auth status on app load
+    checkAuthStatus();
+  }, []);
+
+  return <>{children}</>;
+}
+```
+
+### Use in components:
 
 ```tsx
 // components/LoginForm.tsx
-import React, { useState } from 'react';
-import { useHookService } from 'react-use-anywhere';
-import { authService, navigationService, notificationsService, login } from '../services/authService';
-
-export function LoginForm() {
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Connect services to hooks - this is required!
-  useHookService(authService, 'auth');
-  useHookService(navigationService, 'navigation');
-  useHookService(notificationsService, 'notifications');
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      await login({ email, password });
-      // Service handles navigation and notifications
-    } catch (error) {
-      // Service handles error notifications
-    } finally {
-      setIsLoading(false);
-    }
-  };
-      localStorage.removeItem('authToken');
-      clearUser();
-      navigate('/login');
-      throw error;
-    }
-  },
-
-  async checkAuthStatus() {
-    const { setUser, setLoading } = useHookService('auth');
-    const navigate = useHookService('navigation');
-
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      navigate('/login');
-      return null;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Auth check failed');
-      }
-
-      const user = await response.json();
-      setUser(user);
-
-      return user;
-    } catch (error) {
-      localStorage.removeItem('authToken');
-      navigate('/login');
-      return null;
+      await login(email, password);
+      // Service handles everything else!
     } finally {
       setLoading(false);
     }
-  },
-};
+  };
+
+  return (
+    <form onSubmit={handleLogin}>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+        required
+      />
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Password"
+        required
+      />
+      <button type="submit" disabled={loading}>
+        {loading ? 'Signing in...' : 'Sign In'}
+      </button>
+    </form>
+  );
+}
 ```
+
+This authentication system provides:
+
+- ✅ **Complete login/logout flow**
+- ✅ **Protected routes**
+- ✅ **Error handling and user feedback**
+- ✅ **TypeScript support**
+- ✅ **Easy to test and maintain**
+
+Copy these examples and customize them for your specific backend API endpoints and requirements.
+
+````
 
 ## Advanced Authentication Features
 
@@ -258,14 +365,13 @@ export function LoginForm() {
 
 ```typescript
 // services/passwordResetService.ts
-import { useHookService } from 'react-use-anywhere';
+import { navigationService, notificationService } from './auth';
 
 export const passwordResetService = {
   async requestPasswordReset(email: string) {
-    const { addNotification } = useHookService('notifications');
-    const navigate = useHookService('navigation');
-
     try {
+      notificationService.use(notify => notify.info('Sending reset email...'));
+
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -276,24 +382,19 @@ export const passwordResetService = {
         throw new Error('Failed to send reset email');
       }
 
-      addNotification({
-        type: 'success',
-        message: 'Password reset email sent! Check your inbox.',
-      });
+      notificationService.use(notify =>
+        notify.success('Password reset email sent! Check your inbox.')
+      );
 
-      navigate('/login');
+      navigationService.use(navigate => navigate('/login'));
     } catch (error) {
-      addNotification({
-        type: 'error',
-        message: error.message || 'Failed to send reset email',
-      });
+      notificationService.use(notify =>
+        notify.error(error.message || 'Failed to send reset email')
+      );
     }
   },
 
   async resetPassword(token: string, newPassword: string) {
-    const { addNotification } = useHookService('notifications');
-    const navigate = useHookService('navigation');
-
     try {
       const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
@@ -306,34 +407,28 @@ export const passwordResetService = {
         throw new Error(error.message || 'Password reset failed');
       }
 
-      addNotification({
-        type: 'success',
-        message: 'Password reset successfully! Please log in.',
-      });
+      notificationService.use(notify =>
+        notify.success('Password reset successfully! Please log in.')
+      );
 
-      navigate('/login');
+      navigationService.use(navigate => navigate('/login'));
     } catch (error) {
-      addNotification({
-        type: 'error',
-        message: error.message || 'Password reset failed',
-      });
+      notificationService.use(notify =>
+        notify.error(error.message || 'Password reset failed')
+      );
     }
   },
 };
-```
+````
 
 ### Two-Factor Authentication
 
 ```typescript
 // services/twoFactorService.ts
-import { useHookService } from 'react-use-anywhere';
+import { authService, navigationService, notificationService } from './auth';
 
 export const twoFactorService = {
   async verifyTwoFactor(token: string, code: string) {
-    const navigate = useHookService('navigation');
-    const { setUser } = useHookService('auth');
-    const { addNotification } = useHookService('notifications');
-
     try {
       const response = await fetch('/api/auth/verify-2fa', {
         method: 'POST',
@@ -348,26 +443,21 @@ export const twoFactorService = {
       const { user, authToken } = await response.json();
 
       localStorage.setItem('authToken', authToken);
-      setUser(user);
+      authService.use((auth) => auth.setUser(user));
 
-      addNotification({
-        type: 'success',
-        message: 'Authentication successful!',
-      });
+      notificationService.use((notify) =>
+        notify.success('Authentication successful!')
+      );
 
-      navigate('/dashboard');
+      navigationService.use((navigate) => navigate('/dashboard'));
     } catch (error) {
-      addNotification({
-        type: 'error',
-        message: error.message || 'Verification failed',
-      });
+      notificationService.use((notify) =>
+        notify.error(error.message || 'Verification failed')
+      );
     }
   },
 
   async enableTwoFactor() {
-    const { addNotification } = useHookService('notifications');
-    const navigate = useHookService('navigation');
-
     try {
       const response = await fetch('/api/auth/enable-2fa', {
         method: 'POST',
@@ -383,365 +473,34 @@ export const twoFactorService = {
       const { qrCode, backupCodes } = await response.json();
 
       // Navigate to 2FA setup page with QR code
-      navigate('/settings/2fa/setup', {
-        state: { qrCode, backupCodes },
-      });
-    } catch (error) {
-      addNotification({
-        type: 'error',
-        message: error.message || 'Failed to enable 2FA',
-      });
-    }
-  },
-};
-```
-
-## Social Authentication
-
-```typescript
-// services/socialAuthService.ts
-import { useHookService } from 'react-use-anywhere';
-
-export const socialAuthService = {
-  async loginWithGoogle() {
-    const navigate = useHookService('navigation');
-    const { setUser } = useHookService('auth');
-    const { addNotification } = useHookService('notifications');
-
-    try {
-      // Open Google OAuth popup
-      const popup = window.open(
-        '/api/auth/google',
-        'google-auth',
-        'width=500,height=600'
+      navigationService.use((navigate) =>
+        navigate('/settings/2fa/setup', {
+          state: { qrCode, backupCodes },
+        })
       );
-
-      // Listen for auth completion
-      const result = await new Promise((resolve, reject) => {
-        const checkClosed = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkClosed);
-            reject(new Error('Authentication cancelled'));
-          }
-        }, 1000);
-
-        window.addEventListener('message', (event) => {
-          if (event.origin !== window.location.origin) return;
-
-          clearInterval(checkClosed);
-          popup.close();
-
-          if (event.data.success) {
-            resolve(event.data);
-          } else {
-            reject(new Error(event.data.error || 'Authentication failed'));
-          }
-        });
-      });
-
-      const { user, token } = result;
-
-      localStorage.setItem('authToken', token);
-      setUser(user);
-
-      addNotification({
-        type: 'success',
-        message: `Welcome, ${user.name}!`,
-      });
-
-      navigate('/dashboard');
     } catch (error) {
-      addNotification({
-        type: 'error',
-        message: error.message || 'Google login failed',
-      });
-    }
-  },
-
-  async loginWithGitHub() {
-    // Similar implementation for GitHub OAuth
-    // ... implementation details
-  },
-
-  async linkAccount(provider: 'google' | 'github' | 'facebook') {
-    const { addNotification } = useHookService('notifications');
-    const { setUser } = useHookService('auth');
-
-    try {
-      const response = await fetch(`/api/auth/link/${provider}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to link ${provider} account`);
-      }
-
-      const updatedUser = await response.json();
-      setUser(updatedUser);
-
-      addNotification({
-        type: 'success',
-        message: `${provider} account linked successfully!`,
-      });
-    } catch (error) {
-      addNotification({
-        type: 'error',
-        message: error.message || `Failed to link ${provider} account`,
-      });
+      notificationService.use((notify) =>
+        notify.error(error.message || 'Failed to enable 2FA')
+      );
     }
   },
 };
-```
-
-## Authentication Middleware
-
-Create middleware for protecting routes:
-
-```typescript
-// services/authMiddleware.ts
-import { useHookService } from 'react-use-anywhere';
-
-export const authMiddleware = {
-  requireAuth() {
-    const { user, isAuthenticated } = useHookService('auth');
-    const navigate = useHookService('navigation');
-
-    if (!isAuthenticated) {
-      navigate('/login');
-      return false;
-    }
-
-    return true;
-  },
-
-  requireRole(requiredRole: string) {
-    const { user } = useHookService('auth');
-    const navigate = useHookService('navigation');
-    const { addNotification } = useHookService('notifications');
-
-    if (!user) {
-      navigate('/login');
-      return false;
-    }
-
-    if (user.role !== requiredRole) {
-      addNotification({
-        type: 'error',
-        message: 'Access denied. Insufficient permissions.',
-      });
-      navigate('/unauthorized');
-      return false;
-    }
-
-    return true;
-  },
-
-  requirePermission(permission: string) {
-    const { user } = useHookService('auth');
-    const navigate = useHookService('navigation');
-    const { addNotification } = useHookService('notifications');
-
-    if (!user?.permissions?.includes(permission)) {
-      addNotification({
-        type: 'error',
-        message: 'Access denied. Missing required permission.',
-      });
-      navigate('/unauthorized');
-      return false;
-    }
-
-    return true;
-  },
-};
-```
-
-## Session Management
-
-```typescript
-// services/sessionService.ts
-import { useHookService } from 'react-use-anywhere';
-
-export const sessionService = {
-  startSession() {
-    // Set up session timeout
-    const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-
-    const timeoutId = setTimeout(() => {
-      this.expireSession();
-    }, SESSION_TIMEOUT);
-
-    localStorage.setItem('sessionTimeout', timeoutId.toString());
-  },
-
-  expireSession() {
-    const { addNotification } = useHookService('notifications');
-
-    addNotification({
-      type: 'warning',
-      message: 'Your session has expired. Please log in again.',
-    });
-
-    authService.logout();
-  },
-
-  extendSession() {
-    // Clear existing timeout
-    const timeoutId = localStorage.getItem('sessionTimeout');
-    if (timeoutId) {
-      clearTimeout(parseInt(timeoutId));
-    }
-
-    // Start new session
-    this.startSession();
-  },
-
-  async validateSession() {
-    try {
-      const user = await authService.checkAuthStatus();
-      if (user) {
-        this.extendSession();
-      }
-      return user;
-    } catch (error) {
-      console.error('Session validation failed:', error);
-      return null;
-    }
-  },
-};
-```
-
-## Complete Auth Hook
-
-```typescript
-// hooks/useAuth.ts
-import { useState, useEffect } from 'react';
-import { authService, sessionService } from '../services';
-
-export function useAuth() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    // Check authentication status on mount
-    sessionService.validateSession().finally(() => {
-      setLoading(false);
-    });
-  }, []);
-
-  return {
-    user,
-    loading,
-    error,
-    isAuthenticated: !!user,
-    setUser,
-    setLoading,
-    setError,
-    clearUser: () => setUser(null),
-    login: authService.login,
-    logout: authService.logout,
-    refreshToken: authService.refreshToken,
-  };
-}
-```
-
-## Testing Authentication Services
-
-```typescript
-// services/__tests__/authService.test.ts
-import { useHookService } from 'react-use-anywhere';
-import { authService } from '../authService';
-
-jest.mock('react-use-anywhere');
-const mockUseHookService = useHookService as jest.MockedFunction<
-  typeof useHookService
->;
-
-describe('authService', () => {
-  const mockNavigate = jest.fn();
-  const mockSetUser = jest.fn();
-  const mockAddNotification = jest.fn();
-  const mockSetLoading = jest.fn();
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockUseHookService.mockImplementation((key) => {
-      switch (key) {
-        case 'navigation':
-          return mockNavigate;
-        case 'auth':
-          return { setUser: mockSetUser, setLoading: mockSetLoading };
-        case 'notifications':
-          return { addNotification: mockAddNotification };
-        default:
-          throw new Error(`Unexpected hook: ${key}`);
-      }
-    });
-  });
-
-  describe('login', () => {
-    it('should navigate to dashboard after successful login', async () => {
-      const mockUser = {
-        id: '1',
-        name: 'John',
-        email: 'john@example.com',
-        role: 'user',
-      };
-
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ user: mockUser, token: 'abc123' }),
-      });
-
-      await authService.login({
-        email: 'john@example.com',
-        password: 'password',
-      });
-
-      expect(mockSetUser).toHaveBeenCalledWith(mockUser);
-      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
-      expect(mockAddNotification).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'Welcome back, John!',
-      });
-    });
-
-    it('should navigate to admin dashboard for admin users', async () => {
-      const mockAdmin = {
-        id: '1',
-        name: 'Admin',
-        email: 'admin@example.com',
-        role: 'admin',
-      };
-
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ user: mockAdmin, token: 'abc123' }),
-      });
-
-      await authService.login({
-        email: 'admin@example.com',
-        password: 'password',
-      });
-
-      expect(mockNavigate).toHaveBeenCalledWith('/admin/dashboard');
-    });
-  });
-});
 ```
 
 ## Key Features Demonstrated
 
 ✅ **Complete authentication flow** with login, logout, and session management  
-✅ **Role-based access control** with middleware patterns  
-✅ **Social authentication** integration  
-✅ **Two-factor authentication** support  
-✅ **Password reset functionality**  
-✅ **Session timeout handling**  
-✅ **Comprehensive error handling**  
-✅ **Fully testable services**
+✅ **Protected routes** with proper redirect handling  
+✅ **Service-based architecture** for clean separation of concerns  
+✅ **Error handling and user feedback** through notifications  
+✅ **TypeScript support** with proper typing  
+✅ **Easy to test and maintain** with isolated services
+
+## Getting Started
+
+1. **Set up your hooks** - Create `useAuth` and `useNotifications` hooks
+2. **Connect services** - Use `useHookService` to connect services to hooks
+3. **Wrap your app** - Add `HookProvider` and `AuthProvider` to your app root
+4. **Use the services** - Import and use `login`, `logout`, etc. functions in your components
 
 These authentication patterns show how React Use Anywhere enables you to build robust, service-oriented authentication systems with clean separation of concerns!

@@ -1,90 +1,66 @@
 # Theme Management
 
-Learn how to implement a theme management hook using react-use-anywhere.
+Build a powerful theme system with react-use-anywhere that works across your entire application - from React components to utility functions and API clients.
 
-## Overview
+## 1. Create the Theme Hook
 
-This example demonstrates how to create a theme hook that can be accessed from anywhere in your application through services.
+First, let's create a custom hook that manages our theme state:
 
-## Implementation
-
-### 1. Create the Theme Hook
-
-```typescript
+```ts
 // hooks/useTheme.ts
 import { useState, useEffect, useCallback } from 'react';
 
-export type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light' | 'dark' | 'system';
 
-export interface ThemeState {
-  theme: Theme;
-  isDark: boolean;
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
-  getSystemTheme: () => 'light' | 'dark';
-}
+export const useTheme = () => {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    // Initialize from localStorage or default to system
+    const saved = localStorage.getItem('theme') as Theme | null;
+    return saved || 'system';
+  });
 
-export const useTheme = (): ThemeState => {
-  const getSystemTheme = useCallback((): 'light' | 'dark' => {
+  const getSystemTheme = useCallback(() => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
       : 'light';
   }, []);
 
-  const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem('theme') as Theme | null;
-    return saved || 'system';
-  });
-
-  const resolveTheme = useCallback((): 'light' | 'dark' => {
-    if (theme === 'system') {
-      return getSystemTheme();
-    }
-    return theme as 'light' | 'dark';
-  }, [theme, getSystemTheme]);
-
-  const isDark = resolveTheme() === 'dark';
+  const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
+  const isDark = resolvedTheme === 'dark';
 
   const setTheme = useCallback(
     (newTheme: Theme) => {
       setThemeState(newTheme);
-
-      // Apply theme to document
-      const resolvedTheme = newTheme === 'system' ? getSystemTheme() : newTheme;
-      document.documentElement.setAttribute('data-theme', resolvedTheme);
-      document.documentElement.classList.toggle(
-        'dark',
-        resolvedTheme === 'dark'
-      );
-
-      // Store in localStorage
       localStorage.setItem('theme', newTheme);
+
+      // Apply to document
+      const resolved = newTheme === 'system' ? getSystemTheme() : newTheme;
+      document.documentElement.setAttribute('data-theme', resolved);
+      document.documentElement.classList.toggle('dark', resolved === 'dark');
     },
     [getSystemTheme]
   );
 
   const toggleTheme = useCallback(() => {
-    const resolved = resolveTheme();
-    setTheme(resolved === 'light' ? 'dark' : 'light');
-  }, [resolveTheme, setTheme]);
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  }, [resolvedTheme, setTheme]);
 
-  // Apply theme on mount and theme changes
+  // Apply theme on mount and changes
   useEffect(() => {
-    const resolvedTheme = resolveTheme();
     document.documentElement.setAttribute('data-theme', resolvedTheme);
-    document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
-  }, [resolveTheme]);
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [resolvedTheme, isDark]);
 
   // Listen for system theme changes
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = () => {
       if (theme === 'system') {
-        const resolvedTheme = getSystemTheme();
-        document.documentElement.setAttribute('data-theme', resolvedTheme);
+        const systemTheme = getSystemTheme();
+        document.documentElement.setAttribute('data-theme', systemTheme);
         document.documentElement.classList.toggle(
           'dark',
-          resolvedTheme === 'dark'
+          systemTheme === 'dark'
         );
       }
     };
@@ -95,174 +71,233 @@ export const useTheme = (): ThemeState => {
 
   return {
     theme,
+    resolvedTheme,
     isDark,
     setTheme,
     toggleTheme,
-    getSystemTheme,
   };
 };
 ```
 
-### 2. Register the Hook with HookProvider
+## 2. Setup with HookProvider
 
-```typescript
+```tsx
 // App.tsx
 import { HookProvider } from 'react-use-anywhere';
 import { useTheme } from './hooks/useTheme';
 
 function App() {
   return (
-    <HookProvider
-      hooks={{
-        theme: useTheme,
-      }}
-    >
-      <AppContent />
+    <HookProvider hooks={{ theme: useTheme }}>
+      <YourApp />
     </HookProvider>
   );
 }
 ```
 
-### 3. Create Services to Use the Theme
+## 3. Create a Service to Use Anywhere
 
-```typescript
+```ts
 // services/themeService.ts
 import { createSingletonService } from 'react-use-anywhere';
-import type { ThemeState } from '../hooks/useTheme';
 
 // Create a singleton service to access the theme hook
-export const themeService = createSingletonService<ThemeState>('theme');
+export const themeService = createSingletonService('theme');
 
 // Helper functions that can be used anywhere in your app
-export const toggleTheme = () => {
-  return themeService.use((theme) => {
-    theme.toggleTheme();
-  });
-};
+export const theme = {
+  toggle() {
+    themeService.use((theme) => {
+      theme.toggleTheme();
+    });
+  },
 
-export const setTheme = (newTheme: 'light' | 'dark' | 'system') => {
-  return themeService.use((theme) => {
-    theme.setTheme(newTheme);
-  });
-};
+  setTheme(newTheme: 'light' | 'dark' | 'system') {
+    themeService.use((theme) => {
+      theme.setTheme(newTheme);
+    });
+  },
 
-export const getCurrentTheme = () => {
-  return themeService.use((theme) => theme.theme);
-};
+  getCurrent() {
+    return themeService.use((theme) => theme.theme);
+  },
 
-export const isDarkMode = () => {
-  return themeService.use((theme) => theme.isDark);
-};
-```
-
-### 4. Connect the Service in a React Component
-
-```typescript
-// components/ThemeProvider.tsx
-import React from 'react';
-import { useHookService } from 'react-use-anywhere';
-import { themeService } from '../services/themeService';
-
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Connect the service to the hook
-  useHookService(themeService, 'theme');
-
-  return <>{children}</>;
-};
-```
-
-### 5. Use in React Components
-
-```typescript
-// components/ThemeToggle.tsx
-import React from 'react';
-import { useHook } from 'react-use-anywhere';
-import { toggleTheme, setTheme } from '../services/themeService';
-import type { ThemeState } from '../hooks/useTheme';
-
-export const ThemeToggle = () => {
-  const theme = useHook<ThemeState>('theme');
-
-  if (!theme) return null;
-
-  return (
-    <div className="theme-toggle">
-      <button
-        onClick={toggleTheme}
-        aria-label="Toggle theme"
-      >
-        {theme.isDark ? '🌙' : '☀️'}
-      </button>
-
-      <select
-        value={theme.theme}
-        onChange={(e) => setTheme(e.target.value as any)}
-      >
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-        <option value="system">System</option>
-      </select>
-
-      <span>Current: {theme.isDark ? 'Dark' : 'Light'}</span>
-    </div>
-  );
-};
-```
-
-### 6. Use in Non-React Code
-
-```typescript
-// utils/api.ts
-import { getCurrentTheme, isDarkMode } from '../services/themeService';
-
-export const apiClient = {
-  async makeRequest(url: string) {
-    const currentTheme = getCurrentTheme();
-    const isDark = isDarkMode();
-
-    // Include theme preference in API requests
-    const headers = {
-      'Content-Type': 'application/json',
-      'X-Theme-Preference': currentTheme || 'system',
-      'X-Dark-Mode': isDark ? 'true' : 'false',
-    };
-
-    const response = await fetch(url, { headers });
-    return response.json();
+  isDark() {
+    return themeService.use((theme) => theme.isDark);
   },
 };
 ```
 
+## 4. Connect Service in a Component
+
+```tsx
+// components/ThemeToggle.tsx
+import { useHookService } from 'react-use-anywhere';
+import { themeService, theme } from '../services/themeService';
+
+function ThemeToggle() {
+  // This connects the service to the hook
+  useHookService(themeService, 'theme');
+
+  return (
+    <div>
+      <button onClick={() => theme.setTheme('light')}>☀️ Light</button>
+      <button onClick={() => theme.setTheme('dark')}>🌙 Dark</button>
+      <button onClick={() => theme.setTheme('system')}>💻 System</button>
+      <button onClick={() => theme.toggle()}>🔄 Toggle</button>
+    </div>
+  );
+}
+```
+
+## 5. Use Theme in React Components
+
+```tsx
+// Any component can access the theme
+import { useHook } from 'react-use-anywhere';
+
+function MyComponent() {
+  const themeData = useHook('theme');
+
+  return (
+    <div
+      style={{
+        backgroundColor: themeData?.isDark ? '#1a1a1a' : '#ffffff',
+        color: themeData?.isDark ? '#ffffff' : '#000000',
+      }}
+    >
+      Current theme: {themeData?.resolvedTheme}
+    </div>
+  );
+}
+```
+
+## 6. Use Theme in Non-React Code
+
+```ts
+// utils/apiClient.ts
+import { theme } from '../services/themeService';
+
+export const apiClient = {
+  async request(url: string) {
+    const currentTheme = theme.getCurrent();
+    const isDark = theme.isDark();
+
+    return fetch(url, {
+      headers: {
+        'X-Theme': currentTheme,
+        'X-Dark-Mode': isDark.toString(),
+      },
+    });
+  },
+};
+```
+
+## Advanced Patterns
+
+### Auto Theme Based on Time
+
+```ts
+export const autoTheme = {
+  setTimeBasedTheme() {
+    const hour = new Date().getHours();
+    const isDayTime = hour >= 6 && hour < 18;
+
+    theme.setTheme(isDayTime ? 'light' : 'dark');
+  },
+
+  startAutoTheme() {
+    this.setTimeBasedTheme();
+
+    // Check every hour
+    const interval = setInterval(
+      () => {
+        this.setTimeBasedTheme();
+      },
+      60 * 60 * 1000
+    );
+
+    return () => clearInterval(interval);
+  },
+};
+```
+
+### Theme Persistence with User Preferences
+
+```ts
+export const userTheme = {
+  async saveToServer(themeValue: 'light' | 'dark' | 'system') {
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: themeValue }),
+      });
+    } catch (error) {
+      console.error('Failed to save theme preference:', error);
+    }
+  },
+
+  async loadFromServer() {
+    try {
+      const response = await fetch('/api/user/preferences');
+      const prefs = await response.json();
+
+      if (prefs.theme) {
+        theme.setTheme(prefs.theme);
+      }
+    } catch (error) {
+      console.error('Failed to load theme preference:', error);
+    }
+  },
+};
+```
+
+### Global Keyboard Shortcuts
+
+```ts
+// utils/shortcuts.ts
+import { theme } from '../services/themeService';
+
+// Global keyboard shortcut to toggle theme
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey && e.key === 'd') {
+    e.preventDefault();
+    theme.toggle();
+  }
+});
+```
+
 ## CSS Integration
 
-### CSS Variables Approach
+### CSS Custom Properties
 
 ```css
 /* styles/themes.css */
-:root {
-  --bg-color: #ffffff;
-  --text-color: #333333;
+[data-theme='light'] {
+  --bg-primary: #ffffff;
+  --text-primary: #000000;
   --border-color: #e0e0e0;
 }
 
 [data-theme='dark'] {
-  --bg-color: #1a1a1a;
-  --text-color: #ffffff;
-  --border-color: #333333;
+  --bg-primary: #1a1a1a;
+  --text-primary: #ffffff;
+  --border-color: #404040;
 }
 
-body {
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
+/* Use in components */
+.my-component {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
 }
 ```
 
 ### Tailwind CSS Integration
 
-```typescript
+```js
 // tailwind.config.js
 module.exports = {
   darkMode: 'class', // Use class-based dark mode
@@ -280,153 +315,48 @@ module.exports = {
 };
 ```
 
-## Advanced Features
+## Why react-use-anywhere Makes This Easy
 
-### Theme Persistence
+1. **One Hook, Use Anywhere**: Create your theme logic once, use it everywhere
+2. **No Prop Drilling**: Access theme state in any component without passing props
+3. **Non-React Integration**: Use theme in utility functions, API clients, event handlers
+4. **Type Safety**: Full TypeScript support with proper typing
+5. **Clean Architecture**: Separate concerns with services and hooks
 
-```typescript
-// Enhanced theme service with persistence
-export const createThemeService = (): ThemeService => {
-  // ... previous implementation ...
+## Complete Working Example
 
-  const saveTheme = (theme: Theme) => {
-    try {
-      localStorage.setItem('theme', theme);
-    } catch (error) {
-      console.warn('Could not save theme to localStorage:', error);
-    }
-  };
-
-  const loadTheme = (): Theme | null => {
-    try {
-      return localStorage.getItem('theme') as Theme | null;
-    } catch (error) {
-      console.warn('Could not load theme from localStorage:', error);
-      return null;
-    }
-  };
-
-  // ... rest of implementation
-};
-```
-
-### Theme Animations
-
-```css
-/* Smooth theme transitions */
-* {
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-/* Reduce motion for users who prefer it */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-  }
-}
-```
-
-## Testing
-
-```typescript
-// __tests__/themeService.test.ts
-import { createThemeService } from '../services/themeService';
-
-describe('ThemeService', () => {
-  let themeService: ReturnType<typeof createThemeService>;
-
-  beforeEach(() => {
-    // Mock localStorage
-    const localStorageMock = {
-      getItem: jest.fn(),
-      setItem: jest.fn(),
-    };
-    Object.defineProperty(window, 'localStorage', {
-      value: localStorageMock,
-    });
-
-    // Mock matchMedia
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: jest.fn().mockImplementation((query) => ({
-        matches: false,
-        media: query,
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn(),
-      })),
-    });
-
-    themeService = createThemeService();
-  });
-
-  it('should initialize with system theme', () => {
-    expect(themeService.currentTheme).toBe('system');
-  });
-
-  it('should toggle between light and dark themes', () => {
-    themeService.setTheme('light');
-    expect(themeService.isDark).toBe(false);
-
-    themeService.toggleTheme();
-    expect(themeService.isDark).toBe(true);
-  });
-
-  it('should persist theme to localStorage', () => {
-    themeService.setTheme('dark');
-    expect(localStorage.setItem).toHaveBeenCalledWith('theme', 'dark');
-  });
-});
-```
-
-## Best Practices
-
-1. **Performance**: Use CSS custom properties for theme values to avoid JavaScript-heavy theme switching
-2. **Accessibility**: Respect `prefers-reduced-motion` and `prefers-color-scheme` media queries
-3. **Persistence**: Always handle localStorage errors gracefully
-4. **Transitions**: Use smooth transitions but allow users to disable them
-5. **Testing**: Mock browser APIs in tests for consistent behavior
-
-## Common Patterns
-
-### Theme Context Hook
-
-```typescript
-// hooks/useTheme.ts
+```tsx
+// src/App.tsx
+import { HookProvider } from 'react-use-anywhere';
+import { useTheme } from './hooks/useTheme';
+import { ThemeToggle } from './components/ThemeToggle';
 import { useHookService } from 'react-use-anywhere';
-import { ThemeService } from '../services/themeService';
+import { themeService } from './services/themeService';
 
-export const useTheme = () => {
-  const [themeService] = useHookService<ThemeService>('theme');
+function AppContent() {
+  // Connect the service to enable non-React usage
+  useHookService(themeService, 'theme');
 
-  return {
-    theme: themeService.currentTheme,
-    isDark: themeService.isDark,
-    setTheme: themeService.setTheme,
-    toggleTheme: themeService.toggleTheme,
-  };
-};
+  return (
+    <div>
+      <h1>My App</h1>
+      <ThemeToggle />
+      {/* Rest of your app */}
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <HookProvider hooks={{ theme: useTheme }}>
+      <AppContent />
+    </HookProvider>
+  );
+}
+
+export default App;
 ```
 
-### Theme Provider Component
+That's it! You now have a complete theme system that works across your entire application. The power of react-use-anywhere is that you write your theme logic once and can use it anywhere - React components, utility functions, API clients, or any JavaScript code.
 
-```typescript
-// components/ThemeProvider.tsx
-import { useEffect } from 'react';
-import { useTheme } from '../hooks/useTheme';
-
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isDark } = useTheme();
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
-
-  return <>{children}</>;
-};
-```
-
-This example shows how react-use-anywhere enables clean theme management across your entire application, from React components to utility functions and API clients.
+Simple, clean, and powerful theme management that just works! 🎨
