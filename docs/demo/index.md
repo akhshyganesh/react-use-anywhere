@@ -6,8 +6,6 @@ Experience React Use Anywhere in action! This demo shows how you can use React h
 
 <img src="https://raw.githubusercontent.com/akhshyganesh/react-use-anywhere/refs/heads/feature/enhance-documentation/docs/public/demo-picture.jpeg" alt="react-use-anywhere-demo-picture">
 
-_The demo is running in an embedded iframe above. You can interact with it directly!_
-
 ## What You'll See
 
 The demo demonstrates these key features:
@@ -33,21 +31,21 @@ The demo demonstrates these key features:
 ## Demo Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   Demo App                              │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐    ┌─────────────────────────────┐ │
-│  │   Components    │    │        Services             │ │
-│  │                 │    │                             │ │
-│  │ • Home          │◄───┤ • authService.ts            │ │
-│  │ • Login         │    │ • navigationService.ts      │ │
-│  │ • DebugPanel    │    │ • themeService.ts           │ │
-│  │                 │    │ • logger.ts                 │ │
-│  └─────────────────┘    └─────────────────────────────┘ │
-├─────────────────────────────────────────────────────────┤
-│              HookProvider / TypedHookProvider           │
-│          navigation • auth • theme                      │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                      Demo App                         │
+├───────────────────────────────────────────────────────┤
+│  ┌─────────────────┐    ┌──────────────────────────┐  │
+│  │   Components    │    │        Services          │  │
+│  │                 │    │                          │  │
+│  │ • Home          │◄───┤ • authService.ts         │  │
+│  │ • Login         │    │ • navigationService.ts   │  │
+│  │ • DebugPanel    │    │ • themeService.ts        │  │
+│  │                 │    │ • logger.ts              │  │
+│  └─────────────────┘    └──────────────────────────┘  │
+├───────────────────────────────────────────────────────┤
+│            HookProvider / TypedHookProvider           │
+│              navigation • auth • theme                │
+└───────────────────────────────────────────────────────┘
 ```
 
 ## Key Demo Services
@@ -187,7 +185,7 @@ npm install
 # Run the demo
 npm run demo
 
-# Open http://localhost:5173 in your browser
+# Open http://localhost:3000 in your browser
 ```
 
 ## Key Takeaways
