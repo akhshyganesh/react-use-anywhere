@@ -2,6 +2,18 @@
 
 Production-ready patterns and recommendations for using React Use Anywhere effectively.
 
+## Core Concepts
+
+### Understanding the Library Architecture
+
+React Use Anywhere consists of three main components:
+
+1. **HookProvider** - Provides hooks to your service layer
+2. **useHookService** - Accesses hooks within services
+3. **Service Layer** - Business logic that can access React hooks
+
+The key insight is that services can use React hooks through the provider system, enabling complex business logic outside of components while maintaining access to React's ecosystem.
+
 ## Service Design Principles
 
 ### 1. Single Responsibility Principle
@@ -54,28 +66,51 @@ export const userService = {
 };
 ```
 
-### 2. Dependency Injection
+### 2. Dependency Injection Through Hooks
 
-Always use hooks for external dependencies, never import them directly:
+Always access external dependencies through the hook provider system. This is the core principle of React Use Anywhere:
 
 ```typescript
-// ✅ Good - Dependency injection via hooks
+// ✅ Good - Use hooks through the provider system
 export const authService = {
   async login(credentials: LoginCredentials) {
-    const navigate = useHookService('navigation'); // Injected dependency
-    const { setUser } = useHookService('auth'); // Injected dependency
+    const navigate = useHookService('navigate'); // Access hook via provider
+    const { user, setUser } = useHookService('userState'); // State management hook
+    const { addToast } = useHookService('notifications'); // UI feedback hook
 
-    // Service logic...
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) throw new Error('Login failed');
+
+      const userData = await response.json();
+      setUser(userData);
+      addToast({ type: 'success', message: 'Login successful!' });
+      navigate('/dashboard');
+
+      return userData;
+    } catch (error) {
+      addToast({ type: 'error', message: 'Login failed. Please try again.' });
+      throw error;
+    }
   },
 };
 
-// ❌ Bad - Direct dependencies
-import { navigate } from '../utils/navigation'; // Direct import
+// ❌ Bad - Direct imports bypass the hook provider system
+import { navigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 export const authService = {
   async login(credentials: LoginCredentials) {
-    // Hard to test, tightly coupled
+    // This bypasses React Use Anywhere's provider system
+    // Makes testing difficult and breaks the library's architecture
+    const userData = await loginApi(credentials);
     navigate('/dashboard');
+    toast.success('Login successful!');
   },
 };
 ```
@@ -143,55 +178,85 @@ export const userService = {
 
 ## Hook Provider Patterns
 
-### 1. Organized Hook Registration
+### 1. Basic Hook Provider Setup
 
-Structure your hook provider with clear organization:
+Set up your HookProvider at the application root with all necessary hooks:
 
 ```typescript
-// hooks/index.ts - Centralized hook definitions
-export const appHooks = {
-  // Navigation hooks
-  navigation: useNavigate,
-  location: useLocation,
+// App.tsx - Basic setup
+import { HookProvider } from 'react-use-anywhere';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-  // State management hooks
-  auth: useAuth,
-  theme: useTheme,
-  notifications: useNotifications,
-
-  // Data hooks
-  api: useApi,
-  cache: useCache,
-
-  // UI hooks
-  modal: useModal,
-  loading: useLoading
-};
-
-// App.tsx - Clean provider setup
 function App() {
   return (
-    <TypedHookProvider<AppHooks> hooks={appHooks}>
+    <HookProvider
+      hooks={{
+        navigate: useNavigate,
+        location: useLocation,
+        // Add other hooks your services need
+      }}
+    >
       <Router>
         <Routes>
-          {/* Your routes */}
+          // Your routes
         </Routes>
       </Router>
-    </TypedHookProvider>
+    </HookProvider>
   );
 }
 ```
 
-### 2. Hook Provider Nesting
+### 2. Typed Hook Provider
 
-Use nested providers for different application areas:
+For better type safety, use TypeScript with your hook provider:
+
+```typescript
+// types/hooks.ts
+export interface AppHooks {
+  navigate: ReturnType<typeof useNavigate>;
+  location: ReturnType<typeof useLocation>;
+  auth: ReturnType<typeof useAuth>;
+  notifications: ReturnType<typeof useNotifications>;
+}
+
+// App.tsx - Typed setup
+import { HookProvider } from 'react-use-anywhere';
+
+function App() {
+  return (
+    <HookProvider<AppHooks>
+      hooks={{
+        navigate: useNavigate,
+        location: useLocation,
+        auth: useAuth,
+        notifications: useNotifications,
+      }}
+    >
+      <YourApp />
+    </HookProvider>
+  );
+}
+
+// In services - Type-safe access
+export const authService = {
+  async login(credentials: LoginCredentials) {
+    const navigate = useHookService<AppHooks>('navigate');
+    const auth = useHookService<AppHooks>('auth');
+    // TypeScript will provide full type safety
+  },
+};
+```
+
+### 3. Hook Provider Nesting and Context Management
+
+Use nested providers for different application areas and understand hook resolution:
 
 ```typescript
 // Global hooks for entire app
 function App() {
   return (
     <HookProvider hooks={{
-      navigation: useNavigate,
+      navigate: useNavigate,
       theme: useTheme,
       notifications: useNotifications
     }}>
@@ -200,7 +265,9 @@ function App() {
           <Route path="/admin/*" element={
             <HookProvider hooks={{
               adminAuth: useAdminAuth,
-              adminConfig: useAdminConfig
+              adminConfig: useAdminConfig,
+              // Inner provider can override outer hooks
+              notifications: useAdminNotifications
             }}>
               <AdminArea />
             </HookProvider>
@@ -211,30 +278,58 @@ function App() {
     </HookProvider>
   );
 }
+
+// In AdminArea, services will use the admin-specific hooks
+export const adminService = {
+  async performAdminAction() {
+    // This will use useAdminNotifications, not the global notifications
+    const { addNotification } = useHookService('notifications');
+    // This will use useAdminAuth
+    const auth = useHookService('adminAuth');
+
+    // Implementation...
+  }
+};
 ```
 
-### 3. Hook Memoization
+### 4. Hook Function vs Hook Values
 
-Memoize hook provider props to prevent unnecessary re-renders:
+Understand when to provide hook functions vs hook values:
 
 ```typescript
 function App() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const auth = useAuth();
+  // ✅ Good - Provide hook functions for React hooks
+  const hooks = {
+    navigate: useNavigate,        // Function that returns navigate
+    location: useLocation,        // Function that returns location
+    theme: useTheme,             // Function that returns theme state
+  };
 
-  // ✅ Memoize to prevent recreation
-  const hooks = useMemo(() => ({
-    navigation: () => navigate,
-    location: () => location,
-    auth: () => auth
-  }), [navigate, location, auth]);
+  // ❌ Bad - Don't call hooks at provider level
+  const badHooks = {
+    navigate: useNavigate(),     // Called too early, breaks Rules of Hooks
+    location: useLocation(),     // Called too early
+    theme: useTheme(),          // Called too early
+  };
 
-  return (
-    <HookProvider hooks={hooks}>
-      <YourApp />
-    </HookProvider>
-  );
+  return <HookProvider hooks={hooks}>...</HookProvider>;
+}
+
+// For custom hooks that need parameters:
+function App() {
+  const hooks = {
+    // ✅ Good - Wrap parameterized hooks
+    api: () => useApi({ baseURL: process.env.REACT_APP_API_URL }),
+    auth: () => useAuth({ redirectTo: '/login' }),
+
+    // ✅ Good - For hooks that return functions
+    fetchUser: () => {
+      const api = useApi();
+      return (id: string) => api.get(`/users/${id}`);
+    }
+  };
+
+  return <HookProvider hooks={hooks}>...</HookProvider>;
 }
 ```
 
@@ -324,7 +419,227 @@ export const userService: UserService = {
 };
 ```
 
-## Type Safety Patterns
+## Advanced Patterns
+
+### 1. Service Composition
+
+Compose services to build complex workflows:
+
+```typescript
+// Base service for common operations
+export const baseService = {
+  async withErrorHandling<T>(
+    operation: () => Promise<T>,
+    errorMessage: string
+  ): Promise<T> {
+    const { addNotification } = useHookService('notifications');
+
+    try {
+      return await operation();
+    } catch (error) {
+      addNotification({
+        type: 'error',
+        message: errorMessage,
+      });
+      throw error;
+    }
+  },
+
+  async withLoading<T>(operation: () => Promise<T>): Promise<T> {
+    const { showLoading, hideLoading } = useHookService('loading');
+
+    showLoading();
+    try {
+      return await operation();
+    } finally {
+      hideLoading();
+    }
+  },
+};
+
+// Composed service using base functionality
+export const userService = {
+  async createUser(userData: CreateUserData) {
+    return baseService.withErrorHandling(
+      () =>
+        baseService.withLoading(async () => {
+          const { addNotification } = useHookService('notifications');
+          const navigate = useHookService('navigate');
+
+          const user = await apiService.post('/users', userData);
+          addNotification({
+            type: 'success',
+            message: 'User created successfully',
+          });
+          navigate(`/users/${user.id}`);
+          return user;
+        }),
+      'Failed to create user'
+    );
+  },
+};
+```
+
+### 2. Service Middleware Pattern
+
+Implement middleware for cross-cutting concerns:
+
+```typescript
+// Service middleware
+export const serviceMiddleware = {
+  withAuth<T extends any[], R>(
+    serviceMethod: (...args: T) => Promise<R>,
+    requiredRole?: string
+  ) {
+    return async (...args: T): Promise<R> => {
+      const { user, isAuthenticated } = useHookService('auth');
+      const navigate = useHookService('navigate');
+
+      if (!isAuthenticated) {
+        navigate('/login');
+        throw new Error('Authentication required');
+      }
+
+      if (requiredRole && !user?.roles?.includes(requiredRole)) {
+        throw new Error('Insufficient permissions');
+      }
+
+      return serviceMethod(...args);
+    };
+  },
+
+  withAnalytics<T extends any[], R>(
+    serviceMethod: (...args: T) => Promise<R>,
+    eventName: string
+  ) {
+    return async (...args: T): Promise<R> => {
+      const analytics = useHookService('analytics');
+
+      const startTime = Date.now();
+      try {
+        const result = await serviceMethod(...args);
+        analytics.track(eventName, {
+          success: true,
+          duration: Date.now() - startTime,
+        });
+        return result;
+      } catch (error) {
+        analytics.track(eventName, {
+          success: false,
+          duration: Date.now() - startTime,
+          error: error.message,
+        });
+        throw error;
+      }
+    };
+  },
+};
+
+// Usage
+export const adminService = {
+  deleteUser: serviceMiddleware.withAuth(
+    serviceMiddleware.withAnalytics(async (userId: string) => {
+      const { addNotification } = useHookService('notifications');
+
+      await apiService.delete(`/users/${userId}`);
+      addNotification({
+        type: 'success',
+        message: 'User deleted successfully',
+      });
+    }, 'user_deleted'),
+    'admin'
+  ),
+};
+```
+
+### 3. Service Factory Pattern
+
+Create service factories for dynamic service creation:
+
+```typescript
+// Service factory
+export function createCrudService<T>(entityName: string, endpoint: string) {
+  return {
+    async create(data: Partial<T>): Promise<T> {
+      const { addNotification } = useHookService('notifications');
+      const navigate = useHookService('navigate');
+
+      try {
+        const result = await apiService.post<T>(endpoint, data);
+        addNotification({
+          type: 'success',
+          message: `${entityName} created successfully`,
+        });
+        navigate(`${endpoint}/${result.id}`);
+        return result;
+      } catch (error) {
+        addNotification({
+          type: 'error',
+          message: `Failed to create ${entityName.toLowerCase()}`,
+        });
+        throw error;
+      }
+    },
+
+    async update(id: string, data: Partial<T>): Promise<T> {
+      const { addNotification } = useHookService('notifications');
+
+      try {
+        const result = await apiService.put<T>(`${endpoint}/${id}`, data);
+        addNotification({
+          type: 'success',
+          message: `${entityName} updated successfully`,
+        });
+        return result;
+      } catch (error) {
+        addNotification({
+          type: 'error',
+          message: `Failed to update ${entityName.toLowerCase()}`,
+        });
+        throw error;
+      }
+    },
+
+    async delete(id: string): Promise<void> {
+      const { addNotification } = useHookService('notifications');
+
+      try {
+        await apiService.delete(`${endpoint}/${id}`);
+        addNotification({
+          type: 'success',
+          message: `${entityName} deleted successfully`,
+        });
+      } catch (error) {
+        addNotification({
+          type: 'error',
+          message: `Failed to delete ${entityName.toLowerCase()}`,
+        });
+        throw error;
+      }
+    },
+
+    async getById(id: string): Promise<T> {
+      return apiService.get<T>(`${endpoint}/${id}`);
+    },
+
+    async getAll(): Promise<T[]> {
+      return apiService.get<T[]>(endpoint);
+    },
+  };
+}
+
+// Usage
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export const userService = createCrudService<User>('User', '/api/users');
+export const postService = createCrudService<Post>('Post', '/api/posts');
+```
+
+## TypeScript Integration and Type Safety
 
 ### 1. Comprehensive Type Definitions
 
@@ -371,8 +686,8 @@ Use strict typing for service methods:
 // ✅ Good - Explicit types
 export const userService = {
   async createUser(data: CreateUserData): Promise<User> {
-    const navigate = useTypedHookService<AppHooks>('navigation');
-    const { addNotification } = useTypedHookService<AppHooks>('notifications');
+    const navigate = useHookService<AppHooks>('navigation');
+    const { addNotification } = useHookService<AppHooks>('notifications');
 
     // Implementation with full type safety
   },
@@ -402,8 +717,7 @@ export function createCrudService<T, CreateData, UpdateData>(
 ) {
   return {
     async create(data: CreateData): Promise<T> {
-      const { addNotification } =
-        useTypedHookService<AppHooks>('notifications');
+      const { addNotification } = useHookService<AppHooks>('notifications');
 
       try {
         const result = await apiService.post<T>(endpoint, data);
@@ -445,31 +759,52 @@ export const userService = createCrudService<
 
 ## Performance Optimization
 
-### 1. Service Memoization
+### 1. Hook Provider Memoization
+
+Memoize hook provider props to prevent unnecessary re-renders:
+
+```typescript
+function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const auth = useAuth();
+
+  // ✅ Memoize to prevent recreation
+  const hooks = useMemo(() => ({
+    navigate: () => navigate,
+    location: () => location,
+    auth: () => auth
+  }), [navigate, location, auth]);
+
+  return (
+    <HookProvider hooks={hooks}>
+      <YourApp />
+    </HookProvider>
+  );
+}
+```
+
+### 2. Service Memoization
 
 Memoize expensive service operations:
 
 ```typescript
 export const expensiveService = {
-  // Memoize expensive computations
-  calculateComplexData: useMemo(() => {
-    return (input: ComplexInput) => {
-      // Expensive calculation
-      return processComplexData(input);
-    };
-  }, []),
+  // Memoize expensive computations within service methods
+  calculateComplexData(input: ComplexInput) {
+    const memoizedCalculator = useHookService('memoizedCalculator');
+    return memoizedCalculator(input);
+  },
 
-  // Cache service calls
-  cachedDataService: {
-    async getData(key: string) {
-      const cache = useHookService('cache');
+  // Cache service calls using hooks
+  async getCachedData(key: string) {
+    const cache = useHookService('cache');
 
-      return cache.fetchWithCache(
-        `data-${key}`,
-        () => apiService.get(`/data/${key}`),
-        5 * 60 * 1000 // 5 minute TTL
-      );
-    },
+    return cache.fetchWithCache(
+      `data-${key}`,
+      () => apiService.get(`/data/${key}`),
+      5 * 60 * 1000 // 5 minute TTL
+    );
   },
 };
 ```
@@ -509,45 +844,65 @@ export const dashboardService = {
 
 ### 1. Service Testing Setup
 
-Create consistent testing utilities:
+Create consistent testing utilities for mocking the hook provider:
 
 ```typescript
 // test/serviceTestUtils.ts
-import { useHookService } from 'react-use-anywhere';
+import { renderHook } from '@testing-library/react';
+import { HookProvider } from 'react-use-anywhere';
 
-export function createServiceTestSetup() {
-  const mockHooks = {
-    navigation: jest.fn(),
-    notifications: { addNotification: jest.fn() },
-    auth: { user: null, isAuthenticated: false },
-    // ... other mock hooks
+export function createServiceTestWrapper(mockHooks: Record<string, any>) {
+  return ({ children }: { children: React.ReactNode }) => (
+    <HookProvider hooks={mockHooks}>
+      {children}
+    </HookProvider>
+  );
+}
+
+export function createMockHooks() {
+  return {
+    navigate: jest.fn(),
+    notifications: {
+      addNotification: jest.fn(),
+      removeNotification: jest.fn(),
+    },
+    auth: {
+      user: null,
+      isAuthenticated: false,
+      login: jest.fn(),
+      logout: jest.fn(),
+    },
+    api: {
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      delete: jest.fn(),
+    },
   };
-
-  const mockUseHookService = useHookService as jest.MockedFunction<
-    typeof useHookService
-  >;
-
-  mockUseHookService.mockImplementation((key) => {
-    const hook = mockHooks[key];
-    if (!hook) {
-      throw new Error(`Mock hook '${key}' not found`);
-    }
-    return hook;
-  });
-
-  return { mockHooks, mockUseHookService };
 }
 
 // Usage in tests
-describe('userService', () => {
-  const { mockHooks } = createServiceTestSetup();
+describe('authService', () => {
+  let mockHooks: ReturnType<typeof createMockHooks>;
+  let wrapper: ReturnType<typeof createServiceTestWrapper>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockHooks = createMockHooks();
+    wrapper = createServiceTestWrapper(mockHooks);
   });
 
-  it('should create user successfully', async () => {
-    // Test implementation...
+  it('should login successfully', async () => {
+    const { result } = renderHook(
+      () => {
+        // Test your service method that uses useHookService
+        return authService.login({ email: 'test@example.com', password: 'password' });
+      },
+      { wrapper }
+    );
+
+    // Verify hook interactions
+    expect(mockHooks.api.post).toHaveBeenCalledWith('/login', expect.any(Object));
+    expect(mockHooks.navigate).toHaveBeenCalledWith('/dashboard');
   });
 });
 ```
@@ -666,6 +1021,9 @@ export const errorService = {
 - **Organize services by domain** and responsibility
 - **Document service interfaces** and expected behaviors
 - **Handle edge cases** and error scenarios gracefully
+- **Provide hooks as functions** in the HookProvider, not values
+- **Use useHookService** to access hooks within your services
+- **Leverage nested providers** for different application areas
 
 ### ❌ Don't:
 
@@ -676,6 +1034,38 @@ export const errorService = {
 - **Skip testing** - services should be thoroughly tested
 - **Use direct imports** for dependencies - use hooks instead
 - **Expose internal implementation** details in service interfaces
+- **Call hooks directly in provider setup** - provide the hook functions
+- **Forget to nest providers** when you need different hook contexts
+
+## Common Patterns and Use Cases
+
+### 1. When to Use React Use Anywhere
+
+Use React Use Anywhere when you need to:
+
+- **Move complex business logic out of components** while maintaining access to React hooks
+- **Share stateful logic** across multiple components without prop drilling
+- **Create testable service layers** that can access React's ecosystem
+- **Build reusable business logic** that needs React hook capabilities
+- **Implement cross-cutting concerns** like authentication, analytics, or notifications
+
+### 2. When NOT to Use React Use Anywhere
+
+Don't use React Use Anywhere when:
+
+- **Simple component state** is sufficient
+- **Logic doesn't need React hooks** - use plain functions instead
+- **You're building a pure utility library** without React dependencies
+- **Performance is critical** and the overhead isn't justified
+
+### 3. Integration with Existing Patterns
+
+React Use Anywhere works well with:
+
+- **State management libraries** (Redux, Zustand, Jotai) - access them via hooks
+- **Router libraries** (React Router, Next.js Router) - use navigation hooks in services
+- **UI libraries** (Material-UI, Chakra UI) - access theme and component hooks
+- **Data fetching libraries** (React Query, SWR) - use data hooks in business logic
 
 ## Migration Guide
 
@@ -707,7 +1097,7 @@ function MyComponent() {
 // After - Service-oriented pattern
 export const authService = {
   async login(credentials) {
-    const navigate = useHookService('navigation');
+    const navigate = useHookService('navigate');
     const { setUser } = useHookService('auth');
     const { addNotification } = useHookService('notifications');
 
@@ -725,6 +1115,54 @@ export const authService = {
 function MyComponent() {
   const handleLogin = (credentials) => authService.login(credentials);
   return <LoginForm onSubmit={handleLogin} />;
+}
+```
+
+### From Custom Hooks to Services
+
+```typescript
+// Before - Custom hook with business logic
+function useUserManagement() {
+  const navigate = useNavigate();
+  const { addNotification } = useNotifications();
+
+  const createUser = async (userData) => {
+    try {
+      const user = await api.post('/users', userData);
+      addNotification({ type: 'success', message: 'User created' });
+      navigate(`/users/${user.id}`);
+      return user;
+    } catch (error) {
+      addNotification({ type: 'error', message: 'Failed to create user' });
+      throw error;
+    }
+  };
+
+  return { createUser };
+}
+
+// After - Service with hook access
+export const userService = {
+  async createUser(userData) {
+    const navigate = useHookService('navigate');
+    const { addNotification } = useHookService('notifications');
+
+    try {
+      const user = await api.post('/users', userData);
+      addNotification({ type: 'success', message: 'User created' });
+      navigate(`/users/${user.id}`);
+      return user;
+    } catch (error) {
+      addNotification({ type: 'error', message: 'Failed to create user' });
+      throw error;
+    }
+  }
+};
+
+// In component - much cleaner
+function UserForm() {
+  const handleSubmit = (userData) => userService.createUser(userData);
+  return <Form onSubmit={handleSubmit} />;
 }
 ```
 
