@@ -1,6 +1,6 @@
 {
   "name": "react-use-anywhere",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Use React hooks anywhere in your codebase - in services, utilities, and business logic. Router-agnostic, hook-agnostic, and works with any React hooks (auth, navigation, state, custom hooks, etc.).",
   "author": "akhshyganesh <akhshy.balakannan@gmail.com>",
   "license": "MIT",
@@ -57,6 +57,10 @@
     "build:lib": "vite build --config vite.lib.config.ts",
     "build:demo": "vite build --config vite.demo.config.ts",
     "preview": "vite preview --config vite.demo.config.ts",
+    "docs:dev": "cd docs && npm run dev",
+    "docs:build": "cd docs && npm run build",
+    "docs:preview": "cd docs && npm run preview",
+    "docs:deploy": "cd docs && npm run deploy",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write .",
