@@ -1,6 +1,6 @@
 {
   "name": "react-use-anywhere",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Use React hooks anywhere in your codebase - in services, utilities, and business logic. Router-agnostic, hook-agnostic, and works with any React hooks (auth, navigation, state, custom hooks, etc.).",
   "author": "akhshyganesh <akhshy.balakannan@gmail.com>",
   "license": "MIT",
@@ -19,8 +19,7 @@
     "dist",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md",
-    "REACT_COMPATIBILITY.md"
+    "CHANGELOG.md"
   ],
   "keywords": [
     "react",
@@ -72,15 +71,13 @@
     "prepublishOnly": "npm run test && npm run build:lib"
   },
   "peerDependencies": {
-    "react": ">=16.8.0 <19.0.0-0",
-    "react-dom": ">=16.8.0 <19.0.0-0"
+    "react": ">=16.8.0 <19.1.0",
+    "react-dom": ">=16.8.0 <19.1.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@types/jest": "^29.5.12",
-    "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.2.1",
