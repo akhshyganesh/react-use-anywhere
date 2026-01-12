@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { HookProvider } from '../lib/providers/HookInjectionProvider';
@@ -173,7 +172,7 @@ describe('useHookService', () => {
     );
 
     expect(authService.get()).toEqual({ user: 'John' });
-    expect(navService.get()).toBeInstanceOf(Function);
+    expect(typeof navService.get()).toBe('function');
   });
 });
 

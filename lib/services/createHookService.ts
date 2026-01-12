@@ -143,7 +143,6 @@ export function resetAllServices(): void {
   singletonServices.forEach((service) => {
     service._reset();
   });
-  singletonServices.clear();
 }
 
 /**

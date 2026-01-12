@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { render, fireEvent, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import {
@@ -241,7 +241,7 @@ describe('Integration Tests', () => {
 
   describe('Service Lifecycle', () => {
     it('should work correctly after service reset', () => {
-      render(<TestApp />);
+      const { unmount } = render(<TestApp />);
 
       const loginBtn = screen.getByTestId('login-btn');
 
@@ -249,10 +249,13 @@ describe('Integration Tests', () => {
       fireEvent.click(loginBtn);
       expect(isUserAuthenticated()).toBe(true);
 
+      // Unmount the component first to stop service updates
+      unmount();
+
       // Reset services
       resetAllServices();
 
-      // Services should be cleared
+      // Services should be cleared after unmount and reset
       expect(authService.get()).toBe(null);
       expect(authService.isReady()).toBe(false);
     });

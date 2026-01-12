@@ -44,13 +44,16 @@ describe('createHookService', () => {
     });
 
     it('should handle primitive values', () => {
-      service._setValue('test' as unknown as HookValue);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      service._setValue('test' as any);
       expect(service.get()).toBe('test');
 
-      service._setValue(42 as unknown as HookValue);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      service._setValue(42 as any);
       expect(service.get()).toBe(42);
 
-      service._setValue(true as unknown as HookValue);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      service._setValue(true as any);
       expect(service.get()).toBe(true);
     });
 
@@ -104,7 +107,8 @@ describe('createHookService', () => {
     });
 
     it('should return the callback result', () => {
-      service._setValue({ value: 10 } as unknown as HookValue);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      service._setValue({ value: 10 } as any);
 
       const result = service.use((val) => (val as { value: number }).value * 2);
       expect(result).toBe(20);
@@ -244,12 +248,19 @@ describe('resetAllServices', () => {
     expect(service2.get()).toBe(null);
   });
 
-  it('should clear service registry', () => {
-    createSingletonService('test');
+  it('should clear service values but keep registry', () => {
+    const service = createSingletonService('test');
+    service._setValue({ foo: 'bar' });
+    
     resetAllServices();
 
-    const service = getSingletonService('test');
-    expect(service).toBe(null);
+    // Service should still exist in registry
+    const sameService = getSingletonService('test');
+    expect(sameService).toBe(service);
+    
+    // But should be reset
+    expect(service.isReady()).toBe(false);
+    expect(service.get()).toBe(null);
   });
 
   it('should allow creating new services after reset', () => {
