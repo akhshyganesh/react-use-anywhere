@@ -1,0 +1,484 @@
+# react-use-anywhere - LLM Reference Guide
+
+## Library Purpose
+Enable React hooks to be used anywhere in your codebase (services, utilities, business logic) - not just in components.
+
+## Installation
+```bash
+npm install react-use-anywhere
+```
+
+## Core Concept
+1. Wrap app with HookProvider to register hooks
+2. Create singleton services for each hook
+3. Connect services in at least one component
+4. Use services anywhere in your code
+
+## Complete Working Example
+
+### Step 1: Setup Provider (App.tsx)
+```tsx
+import { HookProvider } from 'react-use-anywhere';
+import { useNavigate } from 'react-router-dom';
+
+function App() {
+  return (
+    <HookProvider hooks={{ 
+      navigate: useNavigate,
+      auth: useAuth,
+      theme: useTheme 
+    }}>
+      <YourApp />
+    </HookProvider>
+  );
+}
+```
+
+### Step 2: Create Services (services/index.ts)
+```typescript
+import { createSingletonService } from 'react-use-anywhere';
+
+// Create one service per hook
+export const authService = createSingletonService('auth');
+export const navService = createSingletonService('navigate');
+export const themeService = createSingletonService('theme');
+
+// Business logic functions
+export const logout = () => {
+  authService.use((auth) => auth.logout());
+  navService.use((nav) => nav('/login'));
+};
+
+export const checkAuth = () => {
+  return authService.use((auth) => auth.isAuthenticated) || false;
+};
+```
+
+### Step 3: Connect in Component (Component.tsx)
+```tsx
+import { useHookService } from 'react-use-anywhere';
+import { authService, navService, logout } from './services';
+
+function MyComponent() {
+  // REQUIRED: Connect services to hooks
+  useHookService(authService, 'auth');
+  useHookService(navService, 'navigate');
+  
+  // Now services work anywhere
+  return <button onClick={logout}>Logout</button>;
+}
+```
+
+### Step 4: Use Anywhere (apiClient.ts, utils.ts, etc.)
+```typescript
+import { authService, navService } from './services';
+
+// Use in API client
+export async function fetchData(url: string) {
+  const response = await fetch(url);
+  
+  if (response.status === 401) {
+    authService.use((auth) => auth.logout());
+    navService.use((nav) => nav('/login'));
+    throw new Error('Unauthorized');
+  }
+  
+  return response.json();
+}
+
+// Use in utilities
+export function navigateToProfile(userId: string) {
+  navService.use((nav) => nav(`/profile/${userId}`));
+}
+```
+
+## TypeScript Usage
+
+### Basic Typing
+```typescript
+import type { NavigateFunction } from 'react-router-dom';
+
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  login: (credentials: Credentials) => void;
+  logout: () => void;
+}
+
+const authService = createSingletonService<AuthState>('auth');
+const navService = createSingletonService<NavigateFunction>('navigate');
+```
+
+### Strict Type Safety
+```typescript
+// Define all your hooks
+type AppHooks = {
+  navigate: () => NavigateFunction;
+  auth: () => AuthState;
+  theme: () => ThemeState;
+};
+
+// Create with compile-time validation
+import { createStrictSingletonService } from 'react-use-anywhere';
+const navService = createStrictSingletonService<AppHooks>('navigate'); // ✅
+const bad = createStrictSingletonService<AppHooks>('invalid'); // ❌ TypeScript Error
+```
+
+## Common Patterns
+
+### Pattern 1: Auth + Navigation
+```typescript
+export const logout = () => {
+  authService.use((auth) => auth.logout());
+  navService.use((nav) => nav('/login'));
+};
+
+export const loginRedirect = (returnUrl: string) => {
+  const isAuth = authService.use((auth) => auth.isAuthenticated);
+  if (!isAuth) {
+    navService.use((nav) => nav(`/login?return=${returnUrl}`));
+    return false;
+  }
+  return true;
+};
+```
+
+### Pattern 2: API Error Handling
+```typescript
+export async function apiCall(endpoint: string) {
+  try {
+    const response = await fetch(endpoint);
+    
+    if (response.status === 401) {
+      authService.use((auth) => auth.logout());
+      navService.use((nav) => nav('/login'));
+      throw new Error('Unauthorized');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    notificationService.use((notify) => notify.error('Request failed'));
+    throw error;
+  }
+}
+```
+
+### Pattern 3: Conditional Logic
+```typescript
+export const addToCart = (product: Product) => {
+  const isAuth = authService.use((auth) => auth.isAuthenticated);
+  
+  if (!isAuth) {
+    notificationService.use((notify) => notify.warning('Please login'));
+    navService.use((nav) => nav('/login'));
+    return;
+  }
+  
+  cartService.use((cart) => cart.addItem(product));
+  notificationService.use((notify) => notify.success('Added to cart'));
+};
+```
+
+### Pattern 4: Multiple Operations
+```typescript
+export const checkout = async () => {
+  const items = cartService.use((cart) => cart.items) || [];
+  
+  if (items.length === 0) {
+    notificationService.use((notify) => notify.warning('Cart is empty'));
+    return;
+  }
+  
+  try {
+    await processPayment(items);
+    cartService.use((cart) => cart.clear());
+    notificationService.use((notify) => notify.success('Order placed!'));
+    navService.use((nav) => nav('/order-confirmation'));
+  } catch (error) {
+    notificationService.use((notify) => notify.error('Payment failed'));
+  }
+};
+```
+
+## Service Methods
+
+### service.use(callback)
+Execute callback with hook value. Returns callback result or null if not ready.
+```typescript
+// Get value
+const user = authService.use((auth) => auth.user);
+
+// Call method
+authService.use((auth) => auth.logout());
+
+// Return result
+const isAuth = authService.use((auth) => auth.isAuthenticated) || false;
+```
+
+### service.get()
+Get current value (null if not ready).
+```typescript
+const authState = authService.get();
+if (authState) {
+  console.log(authState.user);
+}
+```
+
+### service.isReady()
+Check if service is connected.
+```typescript
+if (authService.isReady()) {
+  const auth = authService.get();
+}
+```
+
+## Testing
+
+### Setup
+```typescript
+import { resetAllServices } from 'react-use-anywhere';
+
+describe('AuthService', () => {
+  beforeEach(() => {
+    resetAllServices(); // Clean slate for each test
+  });
+  
+  it('should logout and redirect', () => {
+    const mockAuth = { logout: jest.fn() };
+    const mockNavigate = jest.fn();
+    
+    authService._setValue(mockAuth);
+    navService._setValue(mockNavigate);
+    
+    logout();
+    
+    expect(mockAuth.logout).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/login');
+  });
+});
+```
+
+## Router Compatibility
+
+### React Router
+```tsx
+import { useNavigate } from 'react-router-dom';
+<HookProvider hooks={{ navigate: useNavigate }}>
+```
+
+### TanStack Router
+```tsx
+import { useRouter } from '@tanstack/react-router';
+<HookProvider hooks={{ router: useRouter }}>
+```
+
+### Next.js
+```tsx
+import { useRouter } from 'next/router';
+<HookProvider hooks={{ router: useRouter }}>
+```
+
+### Remix
+```tsx
+import { useNavigate } from '@remix-run/react';
+<HookProvider hooks={{ navigate: useNavigate }}>
+```
+
+## Common Mistakes to Avoid
+
+### ❌ WRONG: Forgetting to connect service
+```tsx
+// Component never calls useHookService
+function Component() {
+  return <button onClick={logout}>Logout</button>;
+}
+// Result: Service not ready warnings
+```
+
+### ✅ CORRECT: Always connect in at least one component
+```tsx
+function Component() {
+  useHookService(authService, 'auth');
+  useHookService(navService, 'navigate');
+  return <button onClick={logout}>Logout</button>;
+}
+```
+
+### ❌ WRONG: Using hooks directly in services
+```typescript
+export const logout = () => {
+  const navigate = useNavigate(); // ❌ Error: hooks only in components
+  navigate('/login');
+};
+```
+
+### ✅ CORRECT: Use service pattern
+```typescript
+export const logout = () => {
+  authService.use((auth) => auth.logout());
+  navService.use((nav) => nav('/login')); // ✅
+};
+```
+
+### ❌ WRONG: Calling _setValue directly
+```typescript
+navService._setValue(newValue); // ❌ Don't do this
+```
+
+### ✅ CORRECT: Use useHookService
+```tsx
+useHookService(navService, 'navigate'); // ✅ Automatic updates
+```
+
+## Error Messages & Solutions
+
+### "Hook not registered in HookProvider"
+**Problem:** Hook name doesn't match what's in HookProvider
+**Solution:** Add hook to HookProvider or fix the name
+```tsx
+<HookProvider hooks={{ 
+  navigate: useNavigate, // ← Must match service name
+  auth: useAuth 
+}}>
+```
+
+### "Service not ready"
+**Problem:** Service not connected with useHookService
+**Solution:** Call useHookService in a component
+```tsx
+function Component() {
+  useHookService(myService, 'myHook'); // ← Connect it
+}
+```
+
+### "useHookContext must be used within HookProvider"
+**Problem:** Component rendered outside HookProvider
+**Solution:** Wrap app with HookProvider
+```tsx
+<HookProvider hooks={{ /* ... */ }}>
+  <App /> {/* All components must be inside */}
+</HookProvider>
+```
+
+## Complete Real-World Example
+
+```typescript
+// services/index.ts
+import { createSingletonService } from 'react-use-anywhere';
+
+export const authService = createSingletonService('auth');
+export const navService = createSingletonService('navigate');
+export const notifyService = createSingletonService('notifications');
+
+export const logout = () => {
+  authService.use((auth) => auth.logout());
+  localStorage.removeItem('token');
+  navService.use((nav) => nav('/login'));
+  notifyService.use((notify) => notify.info('Logged out'));
+};
+
+export const requireAuth = (callback: () => void) => {
+  const isAuth = authService.use((auth) => auth.isAuthenticated);
+  if (isAuth) {
+    callback();
+  } else {
+    navService.use((nav) => nav('/login'));
+    notifyService.use((notify) => notify.warning('Please login'));
+  }
+};
+
+// apiClient.ts
+import { authService, navService, notifyService } from './services';
+
+export async function fetchAPI(endpoint: string, options = {}) {
+  const token = authService.use((auth) => auth.token);
+  
+  const response = await fetch(endpoint, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      ...options.headers,
+    },
+  });
+  
+  if (response.status === 401) {
+    authService.use((auth) => auth.logout());
+    navService.use((nav) => nav('/login'));
+    notifyService.use((notify) => notify.error('Session expired'));
+    throw new Error('Unauthorized');
+  }
+  
+  return response.json();
+}
+
+// App.tsx
+import { HookProvider } from 'react-use-anywhere';
+import { useNavigate } from 'react-router-dom';
+import { useNotifications } from './hooks/useNotifications';
+import { useAuth } from './hooks/useAuth';
+
+function App() {
+  return (
+    <HookProvider hooks={{
+      navigate: useNavigate,
+      auth: useAuth,
+      notifications: useNotifications,
+    }}>
+      <Router />
+    </HookProvider>
+  );
+}
+
+// components/Dashboard.tsx
+import { useHookService } from 'react-use-anywhere';
+import { authService, navService, notifyService, logout } from '../services';
+
+function Dashboard() {
+  useHookService(authService, 'auth');
+  useHookService(navService, 'navigate');
+  useHookService(notifyService, 'notifications');
+  
+  return (
+    <div>
+      <button onClick={logout}>Logout</button>
+      <button onClick={() => fetchAPI('/api/data')}>Fetch Data</button>
+    </div>
+  );
+}
+```
+
+## API Quick Reference
+
+### Exports
+- `HookProvider` - Provider component
+- `createSingletonService(hookName)` - Create/get singleton service
+- `useHookService(service, hookName)` - Connect service in component
+- `useHook(hookName)` - Direct hook access
+- `useAllHooks()` - Get all hooks
+- `resetAllServices()` - Reset all (testing)
+- `createHookService()` - Create new instance (rare)
+- `getSingletonService(hookName)` - Get existing singleton
+
+### Type-Safe Exports
+- `createTypedSingletonService<THooks, K>(hookName)`
+- `createStrictSingletonService<THooks>(hookName)`
+- `useTypedHookService<THooks, K>(service, hookName)`
+- `useStrictHookService<THooks>(service, hookName)`
+
+## Key Rules for LLMs
+
+1. **Always** wrap app with `<HookProvider hooks={{ ... }}>`
+2. **Always** create services with `createSingletonService('hookName')`
+3. **Always** connect services in components with `useHookService(service, 'hookName')`
+4. **Always** use `service.use(callback)` to access hook values in non-React files
+5. **Never** call hooks directly in services (use service pattern)
+6. **Never** call `_setValue` directly (use `useHookService`)
+7. **Always** reset services in test cleanup with `resetAllServices()`
+
+## Compatibility
+- React: 16.8+ through 19.x
+- TypeScript: 5.0+
+- Node: 16+
+- Works with: React Router, TanStack Router, Next.js, Remix, any router
+- Bundle: <2KB gzipped
+- Dependencies: Zero (React is peer dependency)
