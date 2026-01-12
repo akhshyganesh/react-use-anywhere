@@ -87,7 +87,7 @@ describe('createHookService', () => {
       service._setValue(testValue);
 
       const result = service.use(
-        (value) => (value as { method: (() => void) }).method
+        (value) => (value as { method: () => void }).method
       );
 
       expect(result).toBe(testValue.method);
