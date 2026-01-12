@@ -3,6 +3,7 @@ import {
   isHookRegistered,
   getRegisteredHookNames,
 } from '../providers/HookInjectionProvider';
+import { logger } from '../utils/logger';
 
 /**
  * Creates a service that can store and use hook values from anywhere in your code
@@ -21,12 +22,9 @@ export function createHookService<T = unknown>(): HookService<T> {
   return {
     // Internal method used by useHookService - don't call directly
     _setValue(newValue: T) {
-      // Only update if value actually changed
-      const hasChanged =
-        newValue !== value &&
-        JSON.stringify(newValue) !== JSON.stringify(value);
-
-      if (hasChanged || !ready) {
+      // Use reference equality for better performance
+      // This works well with React's state updates which maintain referential stability
+      if (newValue !== value || !ready) {
         value = newValue;
         ready = true;
       }
@@ -45,7 +43,7 @@ export function createHookService<T = unknown>(): HookService<T> {
     // Use the hook value in a callback - this is the main way to use hooks in non-React files
     use<R = unknown>(callback: (hookValue: T) => R): R | null {
       if (!ready) {
-        console.warn(
+        logger.warn(
           "Hook service not ready. Make sure you're using useHookService in a React component."
         );
         return null;
@@ -54,7 +52,7 @@ export function createHookService<T = unknown>(): HookService<T> {
       try {
         return callback(value as T);
       } catch (error) {
-        console.error('Error using hook service:', error);
+        logger.error('Error using hook service:', error);
         return null;
       }
     },
@@ -77,7 +75,7 @@ function validateHookName(hookName: string): void {
   const registeredHooks = getRegisteredHookNames();
 
   if (registeredHooks.length === 0) {
-    console.warn(
+    logger.warn(
       `🚨 No hooks registered yet. Make sure to wrap your app with HookProvider first.\n` +
         `Example: <HookProvider hooks={{ ${hookName}: your${hookName.charAt(0).toUpperCase() + hookName.slice(1)}Hook }}>`
     );
@@ -98,7 +96,7 @@ function validateHookName(hookName: string): void {
         ? `\nDid you mean one of these?\n${suggestions.map((s) => `  • "${s}"`).join('\n')}`
         : '';
 
-    console.error(
+    logger.error(
       `🚨 Hook "${hookName}" is not registered in HookProvider.\n` +
         `Available hooks: ${registeredHooks.map((h) => `"${h}"`).join(', ')}${suggestionText}\n\n` +
         `💡 Make sure your HookProvider includes:\n` +
@@ -122,9 +120,6 @@ function validateHookName(hookName: string): void {
 export function createSingletonService<T = unknown>(
   hookName: string
 ): HookService<T> {
-  // Validate hook name at runtime
-  validateHookName(hookName);
-
   if (!singletonServices.has(hookName)) {
     singletonServices.set(hookName, createHookService<T>());
   }
@@ -137,7 +132,6 @@ export function createSingletonService<T = unknown>(
 export function getSingletonService<T = unknown>(
   hookName: string
 ): HookService<T> | null {
-  validateHookName(hookName);
   const service = singletonServices.get(hookName);
   return service ? (service as HookService<T>) : null;
 }
@@ -149,7 +143,6 @@ export function resetAllServices(): void {
   singletonServices.forEach((service) => {
     service._reset();
   });
-  singletonServices.clear();
 }
 
 /**

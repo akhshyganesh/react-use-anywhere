@@ -1,19 +1,24 @@
 module.exports = {
   root: true,
   env: { browser: true, es2020: true, node: true, jest: true },
-  extends: [
-    'eslint:recommended',
-    // '@typescript-eslint/recommended',
+  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
+  ignorePatterns: [
+    'dist',
+    '.eslintrc.cjs',
+    'vite.config.ts',
+    '*.config.js',
+    '*.config.mjs',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs', 'vite.config.ts', '*.config.js', '*.config.mjs'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
   },
-  plugins: ['@typescript-eslint'],
+  plugins: ['@typescript-eslint', 'react-hooks'],
   rules: {
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'warn',
+    'react-hooks/rules-of-hooks': 'error',
+    'react-hooks/exhaustive-deps': 'warn',
   },
 };

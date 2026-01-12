@@ -9,13 +9,13 @@ export default defineConfig({
     dts({
       insertTypesEntry: true,
       include: ['lib/**/*'],
-      exclude: ['demo/**/*', 'examples/**/*', '**/*.test.*', '**/*.spec.*'],
+      exclude: ['test/**/*', '**/*.test.*', '**/*.spec.*'],
     }),
   ],
   build: {
     lib: {
       entry: resolve(__dirname, 'lib/index.ts'),
-      name: 'ReactHookInjectionPattern',
+      name: 'ReactUseAnywhere',
       formats: ['es', 'cjs'],
       fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
     },

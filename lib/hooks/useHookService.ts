@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react';
+import * as React from 'react';
 import {
   useHookContext,
   isHookRegistered,
   getRegisteredHookNames,
 } from '../providers/HookInjectionProvider';
 import type { HookService, ReactHook } from '../types';
+import { logger } from '../utils/logger';
 
 /**
  * Hook to connect a service to a hook value from the context
@@ -15,7 +17,13 @@ export function useHookService<T = unknown>(
   hookName: string
 ): void {
   const context = useHookContext();
-  const previousValueRef = useRef<T | undefined>();
+  const previousValueRef = useRef<T | undefined>(undefined);
+  const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
+
+  logger.log(
+    `🔌 useHookService: Connecting service to hook "${hookName}"`,
+    context[hookName]
+  );
 
   // Validate hook name
   useEffect(() => {
@@ -34,28 +42,47 @@ export function useHookService<T = unknown>(
           ? `\nDid you mean one of these?\n${suggestions.map((s) => `  • "${s}"`).join('\n')}`
           : '';
 
-      console.error(
+      logger.error(
         `🚨 useHookService: Hook "${hookName}" is not registered in HookProvider.\n` +
           `Available hooks: ${registeredHooks.map((h) => `"${h}"`).join(', ')}${suggestionText}`
       );
     }
   }, [hookName]);
 
+  // Set the initial value synchronously during render
+  const hookValue = context[hookName] as T;
+
+  if (hookValue !== previousValueRef.current) {
+    service._setValue(hookValue);
+    previousValueRef.current = hookValue;
+
+    logger.log(
+      `✅ useHookService: Value set for "${hookName}" during render. Service ready:`,
+      service.isReady()
+    );
+  }
+
   useEffect(() => {
-    const hookValue = context[hookName] as T;
+    const currentHookValue = context[hookName] as T;
 
-    // Only update if the value actually changed (deep comparison for objects)
-    if (hookValue !== previousValueRef.current) {
-      const hasChanged =
-        hookValue !== previousValueRef.current &&
-        JSON.stringify(hookValue) !== JSON.stringify(previousValueRef.current);
+    logger.log(
+      `📝 useHookService: Effect running for "${hookName}"`,
+      currentHookValue
+    );
 
-      if (hasChanged || hookValue !== undefined) {
-        service._setValue(hookValue);
-        previousValueRef.current = hookValue;
-      }
+    // Update if value changed
+    if (currentHookValue !== previousValueRef.current) {
+      service._setValue(currentHookValue);
+      previousValueRef.current = currentHookValue;
+
+      logger.log(
+        `✅ useHookService: Value updated for "${hookName}" in effect`
+      );
+
+      // Force a re-render so components using service.get() see the new value
+      forceUpdate();
     }
-  }, [context[hookName], service]); // Only depend on the specific hook value, not entire context
+  }, [context, service, hookName, forceUpdate]);
 }
 
 /**

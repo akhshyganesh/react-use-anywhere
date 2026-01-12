@@ -1,6 +1,0 @@
-{
-  "hosting": {
-    "public": ".vitepress/dist/",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
-  }
-}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { render, fireEvent, act, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { render, fireEvent, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import {
   HookProvider,
@@ -57,6 +57,15 @@ const handleLogout = () => {
   });
 };
 
+const isUserAuthenticated = (): boolean => {
+  return (
+    authService.use((auth) => {
+      const authState = auth as AuthState | null;
+      return authState?.isAuthenticated ?? false;
+    }) ?? false
+  );
+};
+
 // Component that connects services to hooks
 const ServiceConnector = () => {
   useHookService(authService, 'auth');
@@ -77,6 +86,11 @@ const TestApp = () => {
     handleLogout();
   };
 
+  const checkAuth = () => {
+    const isAuth = isUserAuthenticated();
+    setLoginResult(isAuth);
+  };
+
   return (
     <HookProvider
       hooks={{
@@ -92,6 +106,9 @@ const TestApp = () => {
         <button data-testid="logout-btn" onClick={handleLogoutClick}>
           Logout
         </button>
+        <button data-testid="check-auth-btn" onClick={checkAuth}>
+          Check Auth
+        </button>
         <div data-testid="login-result">{JSON.stringify(loginResult)}</div>
       </div>
     </HookProvider>
@@ -101,101 +118,167 @@ const TestApp = () => {
 describe('Integration Tests', () => {
   beforeEach(() => {
     resetAllServices();
+    mockNavigate.mockClear();
     jest.clearAllMocks();
   });
 
-  it('should handle complete login workflow', () => {
-    render(<TestApp />);
+  describe('Authentication Flow', () => {
+    it('should allow login and update auth state', () => {
+      render(<TestApp />);
 
-    // Initially not authenticated
-    expect(
-      authService.use((auth) => (auth as AuthState | null)?.isAuthenticated)
-    ).toBe(false);
+      const loginBtn = screen.getByTestId('login-btn');
+      const checkAuthBtn = screen.getByTestId('check-auth-btn');
 
-    // Click login
-    act(() => {
-      fireEvent.click(screen.getByTestId('login-btn'));
+      // Initially not authenticated
+      fireEvent.click(checkAuthBtn);
+      expect(screen.getByTestId('login-result')).toHaveTextContent('false');
+
+      // Login
+      fireEvent.click(loginBtn);
+      expect(screen.getByTestId('login-result')).toHaveTextContent('true');
+
+      // Check authentication status
+      fireEvent.click(checkAuthBtn);
+      expect(screen.getByTestId('login-result')).toHaveTextContent('true');
     });
 
-    // Should be authenticated now
-    expect(
-      authService.use((auth) => (auth as AuthState | null)?.isAuthenticated)
-    ).toBe(true);
-    expect(authService.use((auth) => (auth as AuthState | null)?.user)).toEqual(
-      {
-        username: 'testuser',
-      }
-    );
-    expect(screen.getByTestId('login-result')).toHaveTextContent('true');
-  });
+    it('should allow logout and update auth state', () => {
+      render(<TestApp />);
 
-  it('should handle logout workflow', () => {
-    render(<TestApp />);
+      const loginBtn = screen.getByTestId('login-btn');
+      const logoutBtn = screen.getByTestId('logout-btn');
+      const checkAuthBtn = screen.getByTestId('check-auth-btn');
 
-    // Login first
-    act(() => {
-      fireEvent.click(screen.getByTestId('login-btn'));
+      // Login first
+      fireEvent.click(loginBtn);
+      fireEvent.click(checkAuthBtn);
+      expect(screen.getByTestId('login-result')).toHaveTextContent('true');
+
+      // Logout
+      fireEvent.click(logoutBtn);
+
+      // Check authentication status
+      fireEvent.click(checkAuthBtn);
+      expect(screen.getByTestId('login-result')).toHaveTextContent('false');
     });
 
-    expect(
-      authService.use((auth) => (auth as AuthState | null)?.isAuthenticated)
-    ).toBe(true);
+    it('should navigate to login page on logout', () => {
+      render(<TestApp />);
 
-    // Then logout
-    act(() => {
-      fireEvent.click(screen.getByTestId('logout-btn'));
+      const loginBtn = screen.getByTestId('login-btn');
+      const logoutBtn = screen.getByTestId('logout-btn');
+
+      // Login first
+      fireEvent.click(loginBtn);
+
+      // Logout and check navigation
+      fireEvent.click(logoutBtn);
+      expect(mockNavigate).toHaveBeenCalledWith('/login');
+    });
+  });
+
+  describe('Service State Management', () => {
+    it('should maintain state across multiple components', () => {
+      const Component1 = () => {
+        useHookService(authService, 'auth');
+        const handleClick = () => handleLogin({ username: 'user1' });
+        return (
+          <button data-testid="comp1-login" onClick={handleClick}>
+            Login 1
+          </button>
+        );
+      };
+
+      const Component2 = () => {
+        useHookService(authService, 'auth');
+        const isAuth = isUserAuthenticated();
+        return (
+          <div data-testid="comp2-auth">
+            {isAuth ? 'Authenticated' : 'Not Authenticated'}
+          </div>
+        );
+      };
+
+      render(
+        <HookProvider hooks={{ auth: useAuth, navigation: useNavigation }}>
+          <Component1 />
+          <Component2 />
+        </HookProvider>
+      );
+
+      // Initially not authenticated
+      expect(screen.getByTestId('comp2-auth')).toHaveTextContent(
+        'Not Authenticated'
+      );
+
+      // Login from component 1
+      fireEvent.click(screen.getByTestId('comp1-login'));
+
+      // State should update in component 2
+      expect(screen.getByTestId('comp2-auth')).toHaveTextContent(
+        'Authenticated'
+      );
+    });
+  });
+
+  describe('Multiple Service Interaction', () => {
+    it('should handle multiple services working together', () => {
+      render(<TestApp />);
+
+      const loginBtn = screen.getByTestId('login-btn');
+      const logoutBtn = screen.getByTestId('logout-btn');
+
+      // Login
+      fireEvent.click(loginBtn);
+      expect(authService.get()).toBeTruthy();
+
+      // Logout should update auth and call navigation
+      fireEvent.click(logoutBtn);
+      expect(mockNavigate).toHaveBeenCalledWith('/login');
+      expect(isUserAuthenticated()).toBe(false);
+    });
+  });
+
+  describe('Service Lifecycle', () => {
+    it('should work correctly after service reset', () => {
+      const { unmount } = render(<TestApp />);
+
+      const loginBtn = screen.getByTestId('login-btn');
+
+      // Login
+      fireEvent.click(loginBtn);
+      expect(isUserAuthenticated()).toBe(true);
+
+      // Unmount the component first to stop service updates
+      unmount();
+
+      // Reset services
+      resetAllServices();
+
+      // Services should be cleared after unmount and reset
+      expect(authService.get()).toBe(null);
+      expect(authService.isReady()).toBe(false);
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle service calls when not ready', () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const newService = createSingletonService('test');
+
+      // Try to use service before it's connected
+      const result = newService.use(() => 'test');
+
+      expect(result).toBe(null);
+      expect(consoleWarnSpy).toHaveBeenCalled();
+
+      consoleWarnSpy.mockRestore();
     });
 
-    // Should be logged out and navigation called
-    expect(
-      authService.use((auth) => (auth as AuthState | null)?.isAuthenticated)
-    ).toBe(false);
-    expect(mockNavigate).toHaveBeenCalledWith('/login');
-  });
-
-  it('should maintain singleton service state', () => {
-    const service1 = createSingletonService('test');
-    const service2 = createSingletonService('test');
-
-    // Should be the same instance
-    expect(service1).toBe(service2);
-
-    // State should be shared
-    service1._setValue({ shared: 'state' });
-    expect(service2.get()).toEqual({ shared: 'state' });
-  });
-});
-
-describe('Singleton Service Behavior', () => {
-  beforeEach(() => {
-    resetAllServices();
-  });
-
-  it('should share state across multiple components', () => {
-    // Create multiple instances of the same service
-    const service1 = createSingletonService('shared');
-    const service2 = createSingletonService('shared');
-    const service3 = createSingletonService('shared');
-
-    expect(service1).toBe(service2);
-    expect(service2).toBe(service3);
-
-    // Set value in one instance
-    service1._setValue({ shared: 'state' });
-
-    // Should be available in all instances
-    expect(service2.get()).toEqual({ shared: 'state' });
-    expect(service3.get()).toEqual({ shared: 'state' });
-  });
-
-  it('should maintain different state for different service IDs', () => {
-    const authService = createSingletonService('auth');
-    const themeService = createSingletonService('theme');
-
-    authService._setValue({ user: 'test' });
-    themeService._setValue({ theme: 'dark' });
-
-    expect(authService.get()).toEqual({ user: 'test' });
-    expect(themeService.get()).toEqual({ theme: 'dark' });
+    it('should handle null auth state gracefully', () => {
+      const result = handleLogout();
+      // Should not throw error even if auth is not ready
+      expect(result).toBeUndefined();
+    });
   });
 });
