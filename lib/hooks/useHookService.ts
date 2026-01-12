@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import * as React from 'react';
 import {
   useHookContext,
   isHookRegistered,
@@ -16,6 +17,11 @@ export function useHookService<T = unknown>(
 ): void {
   const context = useHookContext();
   const previousValueRef = useRef<T | undefined>(undefined);
+  const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`🔌 useHookService: Connecting service to hook "${hookName}"`, context[hookName]);
+  }
 
   // Validate hook name
   useEffect(() => {
@@ -43,17 +49,38 @@ export function useHookService<T = unknown>(
     }
   }, [hookName]);
 
-  useEffect(() => {
-    const hookValue = context[hookName] as T;
-
-    // Only update if the value actually changed (reference equality check)
-    // For better performance, we use reference equality instead of deep comparison
-    // If you need deep comparison, consider using React.memo or custom comparison
-    if (hookValue !== previousValueRef.current) {
-      service._setValue(hookValue);
-      previousValueRef.current = hookValue;
+  // Set the initial value synchronously during render
+  const hookValue = context[hookName] as T;
+  
+  if (hookValue !== previousValueRef.current) {
+    service._setValue(hookValue);
+    previousValueRef.current = hookValue;
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`✅ useHookService: Value set for "${hookName}" during render. Service ready:`, service.isReady());
     }
-  }, [context[hookName], service, hookName]); // Only depend on the specific hook value, not entire context
+  }
+
+  useEffect(() => {
+    const currentHookValue = context[hookName] as T;
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`📝 useHookService: Effect running for "${hookName}"`, currentHookValue);
+    }
+
+    // Update if value changed
+    if (currentHookValue !== previousValueRef.current) {
+      service._setValue(currentHookValue);
+      previousValueRef.current = currentHookValue;
+      
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`✅ useHookService: Value updated for "${hookName}" in effect`);
+      }
+      
+      // Force a re-render so components using service.get() see the new value
+      forceUpdate();
+    }
+  }, [context[hookName], service, hookName, forceUpdate]);
 }
 
 /**

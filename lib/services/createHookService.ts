@@ -127,9 +127,6 @@ function validateHookName(hookName: string): void {
 export function createSingletonService<T = unknown>(
   hookName: string
 ): HookService<T> {
-  // Validate hook name at runtime
-  validateHookName(hookName);
-
   if (!singletonServices.has(hookName)) {
     singletonServices.set(hookName, createHookService<T>());
   }
@@ -142,7 +139,6 @@ export function createSingletonService<T = unknown>(
 export function getSingletonService<T = unknown>(
   hookName: string
 ): HookService<T> | null {
-  validateHookName(hookName);
   const service = singletonServices.get(hookName);
   return service ? (service as HookService<T>) : null;
 }
