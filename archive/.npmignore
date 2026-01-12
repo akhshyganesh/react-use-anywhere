@@ -1,6 +1,9 @@
 # Source files (only dist should be published)
 lib/
+demo/
+examples/
 test/
+docs/
 
 # Development files
 .vscode/
@@ -17,20 +20,18 @@ jest.config.json
 .eslintrc.*
 .prettierrc.*
 .gitignore
-.editorconfig
 
 # Build artifacts (except dist)
 node_modules/
 coverage/
+dist-demo/
 *.local
 
-# Documentation (except main docs)
+# Documentation (except main README)
 CONTRIBUTING.md
+CHANGELOG.md
 
 # CI/CD
 .github/
-
-# Package manager
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
+.travis.yml
+.circleci/

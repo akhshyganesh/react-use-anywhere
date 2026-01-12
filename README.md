@@ -3,7 +3,6 @@
 [![npm version](https://badge.fury.io/js/react-use-anywhere.svg)](https://www.npmjs.com/package/react-use-anywhere)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests Passing](https://img.shields.io/badge/tests-40%20passing-brightgreen.svg)](https://github.com/akhshyganesh/react-use-anywhere)
 [![Bundle Size](https://img.shields.io/badge/gzip-<2KB-blue.svg)](https://bundlephobia.com/package/react-use-anywhere)
 [![React](https://img.shields.io/badge/React-16.8%2B%20%7C%2017%20%7C%2018%20%7C%2019-61dafb.svg)](https://reactjs.org/)
 
@@ -104,10 +103,6 @@ function MyComponent() {
 
 **Done!** Now call `logout()` anywhere in your codebase! 🎊
 
-> 📚 **New to the library?** Check out our **[Step-by-Step Getting Started Guide](./GETTING_STARTED.md)** for a gentler introduction.
->
-> 💡 **Need quick reference?** See the **[Quick Reference Card](./QUICK_REFERENCE.md)** for common patterns.
-
 ---
 
 ## 🔥 Real-World Examples
@@ -116,6 +111,8 @@ function MyComponent() {
 
 ```typescript
 // services/apiService.ts
+import { authService, navService } from './authService';
+
 export const fetchData = async (endpoint: string) => {
   const response = await fetch(endpoint);
 
@@ -134,6 +131,8 @@ export const fetchData = async (endpoint: string) => {
 
 ```typescript
 // services/cartService.ts
+import { createSingletonService } from 'react-use-anywhere';
+
 export const cartService = createSingletonService('cart');
 export const notifyService = createSingletonService('notifications');
 
@@ -164,6 +163,8 @@ export const checkout = async () => {
 
 ```typescript
 // services/themeService.ts
+import { createSingletonService } from 'react-use-anywhere';
+
 export const themeService = createSingletonService('theme');
 
 export const toggleTheme = () => {
@@ -173,6 +174,189 @@ export const toggleTheme = () => {
     document.body.className = theme.current;
   });
 };
+```
+
+---
+
+## 📚 Core API
+
+### `HookProvider`
+
+Wrap your app to register hooks.
+
+```tsx
+import { HookProvider } from 'react-use-anywhere';
+
+<HookProvider hooks={{ 
+  navigate: useNavigate,
+  auth: useAuth,
+  theme: useTheme 
+}}>
+  <App />
+</HookProvider>
+```
+
+### `createSingletonService(hookName)`
+
+Create a service to access hook values anywhere.
+
+```typescript
+import { createSingletonService } from 'react-use-anywhere';
+
+const authService = createSingletonService('auth');
+
+// Use it anywhere
+export const checkAuth = () => {
+  return authService.use((auth) => auth.isAuthenticated) || false;
+};
+```
+
+### `useHookService(service, hookName)`
+
+Connect service to hook value in a component.
+
+```tsx
+import { useHookService } from 'react-use-anywhere';
+
+function MyComponent() {
+  useHookService(authService, 'auth');
+  useHookService(navService, 'navigate');
+  
+  // Now services are ready to use anywhere
+  return <button onClick={logout}>Logout</button>;
+}
+```
+
+### Service Methods
+
+```typescript
+const service = createSingletonService('myHook');
+
+// Execute callback with hook value
+service.use((hookValue) => {
+  // Do something with hookValue
+  return result;
+});
+
+// Get current value
+const value = service.get();
+
+// Check if ready
+if (service.isReady()) {
+  // Service is connected
+}
+```
+
+---
+
+## 🛡️ TypeScript Support
+
+Full type safety with automatic type inference.
+
+```typescript
+import { createSingletonService } from 'react-use-anywhere';
+import type { NavigateFunction } from 'react-router-dom';
+
+// Type is automatically inferred
+const navService = createSingletonService<NavigateFunction>('navigate');
+
+// Fully typed
+navService.use((navigate) => {
+  navigate('/home'); // TypeScript knows navigate is NavigateFunction
+});
+```
+
+### Advanced Type Safety
+
+```typescript
+// Define your hook types
+type AppHooks = {
+  navigate: () => NavigateFunction;
+  auth: () => AuthState;
+  theme: () => ThemeState;
+};
+
+// Create type-safe services
+import { createStrictSingletonService } from 'react-use-anywhere';
+
+const navService = createStrictSingletonService<AppHooks>('navigate'); // ✅
+const badService = createStrictSingletonService<AppHooks>('invalid');  // ❌ TypeScript Error
+```
+
+---
+
+## 🌐 Framework Compatibility
+
+Works with **any React router or no router at all**:
+
+### React Router
+
+```tsx
+import { useNavigate } from 'react-router-dom';
+
+<HookProvider hooks={{ navigate: useNavigate }}>
+  <App />
+</HookProvider>
+```
+
+### TanStack Router
+
+```tsx
+import { useRouter } from '@tanstack/react-router';
+
+<HookProvider hooks={{ router: useRouter }}>
+  <App />
+</HookProvider>
+```
+
+### Next.js
+
+```tsx
+import { useRouter } from 'next/router';
+
+<HookProvider hooks={{ router: useRouter }}>
+  <App />
+</HookProvider>
+```
+
+### Any Custom Hook
+
+```tsx
+<HookProvider hooks={{ 
+  customHook: useYourCustomHook,
+  anotherHook: useAnotherHook 
+}}>
+  <App />
+</HookProvider>
+```
+
+---
+
+## 🧪 Testing
+
+Easy to test with service mocking.
+
+```typescript
+import { resetAllServices } from 'react-use-anywhere';
+
+describe('authService', () => {
+  beforeEach(() => {
+    resetAllServices(); // Clean slate for each test
+  });
+
+  it('should logout and redirect', () => {
+    const mockAuth = { logout: jest.fn() };
+    const mockNavigate = jest.fn();
+
+    authService._setValue(mockAuth);
+    navService._setValue(mockNavigate);
+
+    logout();
+
+    expect(mockAuth.logout).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/login');
+  });
+});
 ```
 
 ---
@@ -197,333 +381,106 @@ export const toggleTheme = () => {
 - 🌐 **Universal** - Works with React Router, Next.js, Remix, TanStack Router
 - 🧪 **Easy testing** - Mock services, not components
 - 📦 **Tiny** - < 2KB gzipped, zero dependencies
-- 🚀 **Production-ready** - Battle-tested, no memory leaks, 40+ tests
-- 🎨 **Hook-agnostic** - Works with ANY React hooks
-- 🔄 **Compatible** - React 16.8+, 17, 18, 19
+- 🚀 **Production-ready** - Battle-tested, no memory leaks
 
 ---
 
-## 🏛️ Perfect for Clean Architecture
+## 📖 Advanced Patterns
 
-```
-src/
-├── components/          # Pure UI components
-├── services/           # Business logic (uses hooks via services)
-│   ├── authService.ts
-│   ├── apiService.ts
-│   └── cartService.ts
-├── hooks/              # React hooks
-│   ├── useAuth.ts
-│   └── useTheme.ts
-└── utils/              # Pure utilities
-```
-
----
-
-## 🛡️ Type-Safe Usage
+### Composable Services
 
 ```typescript
-// Define your app's hook types once
-type AppHooks = {
-  navigate: () => NavigateFunction;
-  auth: () => AuthState;
-  theme: () => ThemeState;
+// services/userService.ts
+export const userService = createSingletonService('user');
+
+export const getUserProfile = () => {
+  return userService.use((user) => user.profile) || null;
 };
 
-// Get full type safety everywhere
-const navService = createTypedSingletonService<AppHooks, 'navigate'>(
-  'navigate'
-);
-
-// TypeScript catches typos at compile time!
-// const bad = createTypedSingletonService<AppHooks, 'typo'>('typo'); // ❌ Error!
-```
-
----
-
-## 🚀 Advanced Features
-
-### Multiple Hook Access
-
-```typescript
-export const performLogout = () => {
-  authService.use((auth) => auth.logout());
-  cartService.use((cart) => cart.clear());
-  navService.use((nav) => nav('/login'));
-  notifyService.use((notify) => notify.info('Logged out'));
+export const updateProfile = (data: ProfileData) => {
+  userService.use((user) => user.updateProfile(data));
+  notifyService.use((notify) => notify.success('Profile updated!'));
 };
 ```
 
-### Conditional Logic
+### Conditional Navigation
 
 ```typescript
-export const goToCheckout = () => {
+export const navigateWithAuth = (path: string) => {
   const isAuth = authService.use((auth) => auth.isAuthenticated);
-
+  
   if (!isAuth) {
     navService.use((nav) => nav('/login'));
-    notifyService.use((notify) => notify.warning('Please login'));
+    return false;
+  }
+  
+  navService.use((nav) => nav(path));
+  return true;
+};
+```
+
+### Service Composition
+
+```typescript
+export const performSecureAction = async (action: () => Promise<void>) => {
+  const isAuth = authService.use((auth) => auth.isAuthenticated);
+  
+  if (!isAuth) {
+    notifyService.use((notify) => notify.error('Please login first'));
+    navService.use((nav) => nav('/login'));
     return;
   }
-
-  navService.use((nav) => nav('/checkout'));
-};
-```
-
-### Error Handling
-
-```typescript
-export const safeApiCall = async (endpoint: string) => {
+  
   try {
-    return { success: true, data: await fetchData(endpoint) };
+    await action();
   } catch (error) {
-    notifyService.use((notify) => notify.error('Request failed'));
-    return { success: false, error: error.message };
+    if (error.status === 401) {
+      authService.use((auth) => auth.logout());
+      navService.use((nav) => nav('/login'));
+    }
   }
 };
 ```
-
----
-
-## 🎮 Try the Demo
-
-```bash
-git clone https://github.com/akhshyganesh/react-use-anywhere
-cd react-use-anywhere
-npm install
-npm run dev
-```
-
-Demo features:
-
-- 🔐 Complete authentication flow
-- 🎨 Theme switching from services
-- 🧭 Navigation from non-React files
-- 📊 Real-time debug panel
-- 🛡️ Type-safe examples
-
----
-
-## ✅ When to Use
-
-**Perfect for:**
-
-- ✅ Service layers and business logic
-- ✅ API clients needing navigation/auth
-- ✅ Utility functions needing React state
-- ✅ Clean architecture applications
-- ✅ Large-scale applications
-
-**Not needed for:**
-
-- ❌ Simple prop passing (just use props)
-- ❌ Direct component communication (use standard patterns)
-- ❌ Tiny apps with minimal state
-
----
-
-## 🔍 How It Works
-
-```
-┌─────────────────────────────────────────────┐
-│  HookProvider (Top Level)                   │
-│  ├─ Executes: useNavigate, useAuth, etc    │
-│  └─ Provides values via React Context       │
-└─────────────────────────────────────────────┘
-              ↓
-┌─────────────────────────────────────────────┐
-│  React Components                            │
-│  └─ useHookService connects services         │
-└─────────────────────────────────────────────┘
-              ↓
-┌─────────────────────────────────────────────┐
-│  Services (Anywhere in Your Code)           │
-│  ├─ API clients                              │
-│  ├─ Business logic                           │
-│  ├─ Utilities                                │
-│  └─ Non-React files                          │
-└─────────────────────────────────────────────┘
-```
-
----
-
-## 📚 API Reference
-
-### Core Functions
-
-```typescript
-// Create a singleton service (recommended)
-createSingletonService<T>(hookName: string): HookService<T>
-
-// Create type-safe service
-createTypedSingletonService<THooks, K>(hookName: K): HookService<...>
-
-// Connect service to hook in component
-useHookService<T>(service: HookService<T>, hookName: string): void
-
-// Get hook value directly in component
-useHook<T>(hookName: string): T | undefined
-
-// Reset all services (testing)
-resetAllServices(): void
-```
-
-### HookService Interface
-
-```typescript
-interface HookService<T> {
-  // Use hook value in callback (main method)
-  use<R>(callback: (value: T) => R): R | null;
-
-  // Get current value
-  get(): T | null;
-
-  // Check if ready
-  isReady(): boolean;
-}
-```
-
----
-
-## 💬 FAQ
-
-**Is this production-ready?**  
-Yes! Battle-tested with 40+ tests, no memory leaks, TypeScript strict mode, and used in production.
-
-**Does it work with Next.js/Remix?**  
-Yes! Works with all React frameworks: React Router, Next.js, Remix, TanStack Router.
-
-**What about performance?**  
-Excellent! < 2KB gzipped, uses reference equality, minimal re-renders, zero runtime overhead.
-
-**Can I use it with existing code?**  
-Yes! Adopt incrementally - start with one service, add more as needed.
-
-**What React versions are supported?**  
-React 16.8+ (all versions with hooks), including 17, 18, and 19.
-
-📚 **[View React Version Examples](./examples/)** - See comprehensive examples for each React version:
-
-- [React 16.8+ Example](./examples/react-16-example.tsx) - Hooks foundation
-- [React 17 Example](./examples/react-17-example.tsx) - JSX transform & cleanup
-- [React 18 Example](./examples/react-18-example.tsx) - Concurrent features & batching
-- [React 19 Example](./examples/react-19-example.tsx) - Actions & optimistic updates
-
-**What browsers are supported?**  
-Modern browsers: Chrome 60+, Firefox 55+, Safari 12+, Edge 79+. No IE11 support.
-
----
-
-## 🌐 Framework Compatibility
-
-| Framework              | Versions      | Status        |
-| ---------------------- | ------------- | ------------- |
-| **Create React App**   | All           | ✅ Tested     |
-| **Vite**               | 4.x, 5.x      | ✅ Tested     |
-| **Next.js Pages**      | 12+, 13+, 14+ | ✅ Compatible |
-| **Next.js App Router** | 13+, 14+      | ✅ Compatible |
-| **Remix**              | 1.x, 2.x      | ✅ Compatible |
-| **React Router**       | 5.x, 6.x      | ✅ Tested     |
-| **TanStack Router**    | 1.x           | ✅ Compatible |
-| **Expo/React Native**  | With hooks    | ✅ Compatible |
-
----
-
-## 📊 Comparison with Alternatives
-
-| Feature              | React Use Anywhere | Redux | Zustand | Context API |
-| -------------------- | ------------------ | ----- | ------- | ----------- |
-| Use hooks anywhere   | ✅                 | ❌    | ❌      | ❌          |
-| Zero boilerplate     | ✅                 | ❌    | ⚠️      | ❌          |
-| Type-safe            | ✅                 | ⚠️    | ✅      | ⚠️          |
-| Bundle size          | < 2KB              | ~40KB | ~1KB    | 0KB         |
-| Learning curve       | 5 min              | Days  | Hours   | Hours       |
-| Works with any hooks | ✅                 | ❌    | ❌      | ⚠️          |
-| Zero dependencies    | ✅                 | ❌    | ✅      | ✅          |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
+Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md) for details.
 
-1. Fork the repo
-2. Create a feature branch
-3. Add tests for new features
-4. Submit a PR
-
----
-
-## 🛠️ Development
-
-```bash
-npm install          # Install dependencies
-npm run dev          # Run demo
-npm run build        # Build library
-npm test             # Run tests
-npm run type-check   # TypeScript validation
-```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
 ## 📄 License
 
-MIT © [akhshyganesh](https://github.com/akhshyganesh)
-
----
-
-## 💖 Support
-
-If this library helps you:
-
-- ⭐ Star the repo on GitHub
-- 🐛 Report bugs and issues
-- 💡 Suggest new features
-- 🤝 Contribute code
-- 📢 Share with other developers
+MIT © [Akhshy Ganesh](https://github.com/akhshyganesh)
 
 ---
 
 ## 🔗 Links
 
-### 🚀 Getting Started
-
-- **[📖 Getting Started Guide](./GETTING_STARTED.md)** - Step-by-step tutorial (15 min)
-- **[💡 Quick Reference](./QUICK_REFERENCE.md)** - Common patterns cheat sheet
-- **[📂 Repository Structure](./STRUCTURE.md)** - Navigate the codebase
-
-### 📚 Learn More
-
-- **[🎓 Learning Path](./docs/guide/LEARNING_PATH.md)** - Progressive learning from beginner to advanced
-- **[📚 Full Documentation](./docs)** - Complete guides and API reference
-- **[💡 Examples](./docs/examples)** - Real-world usage patterns
-- **[🎮 Interactive Demo](./demo)** - See it in action
-
-### 🤝 Community
-
-- **[📦 npm Package](https://www.npmjs.com/package/react-use-anywhere)** - Latest release
-- **[🐛 GitHub Issues](https://github.com/akhshyganesh/react-use-anywhere/issues)** - Report bugs or request features
-- **[🤝 Contributing](./CONTRIBUTING.md)** - How to contribute
-- **[📝 Changelog](./CHANGELOG.md)** - Version history
+- [GitHub Repository](https://github.com/akhshyganesh/react-use-anywhere)
+- [npm Package](https://www.npmjs.com/package/react-use-anywhere)
+- [Issue Tracker](https://github.com/akhshyganesh/react-use-anywhere/issues)
+- [Changelog](./CHANGELOG.md)
 
 ---
 
-<div align="center">
+## 💖 Support
+
+If you find this library helpful, please consider:
+
+- ⭐ Starring the repository
+- 🐛 Reporting bugs
+- 💡 Suggesting new features
+- 📖 Improving documentation
+- 🔄 Sharing with others
+
+---
 
 **Made with ❤️ for the React community**
-
-Ready to write cleaner React code?
-
-```bash
-npm install react-use-anywhere
-```
-
-**Get started in 2 minutes!** 🚀
-
----
-
-### 🌟 Give us a star if this library helps you build better React applications!
-
-[![GitHub stars](https://img.shields.io/github/stars/akhshyganesh/react-use-anywhere?style=social)](https://github.com/akhshyganesh/react-use-anywhere)
-
-</div>

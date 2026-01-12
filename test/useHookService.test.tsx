@@ -1,273 +1,274 @@
-import React, { useState } from 'react';
-import { render } from '@testing-library/react';
+import React from 'react';
+import { render, renderHook, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import {
-  useHookService,
-  useHook,
-  useAllHooks,
-} from '../lib/hooks/useHookService';
 import { HookProvider } from '../lib/providers/HookInjectionProvider';
-import {
-  createHookService,
-  createSingletonService,
-  resetAllServices,
-} from '../lib/services/createHookService';
-import { HookService } from '../lib';
-
-// Mock hooks for testing
-const mockNavigate = jest.fn();
-const mockAuthData = {
-  user: { id: 1, name: 'Test User' },
-  isAuthenticated: true,
-  login: jest.fn(),
-  logout: jest.fn(),
-};
-
-// Hook functions that return values
-const useAuth = () => mockAuthData;
-const useNavigate = () => mockNavigate;
-
-const TestComponent = ({
-  service,
-  hookName,
-}: {
-  service: HookService<unknown>;
-  hookName: string;
-}) => {
-  useHookService(service, hookName);
-  return <div data-testid="test-component">Test Component</div>;
-};
-
-const DirectHookComponent = ({ hookName }: { hookName: string }) => {
-  const hookValue = useHook(hookName);
-  return (
-    <div data-testid="hook-value">
-      {JSON.stringify(hookValue) || 'undefined'}
-    </div>
-  );
-};
-
-const AllHooksComponent = () => {
-  const allHooks = useAllHooks();
-  return <div data-testid="all-hooks">{JSON.stringify(allHooks)}</div>;
-};
+import { useHookService, useHook, useAllHooks } from '../lib/hooks/useHookService';
+import { createHookService, resetAllServices } from '../lib/services/createHookService';
 
 describe('useHookService', () => {
-  let service: ReturnType<typeof createHookService>;
-
   beforeEach(() => {
-    service = createHookService();
     resetAllServices();
     jest.clearAllMocks();
   });
 
-  it('should connect service to hook from provider', () => {
+  it('should connect service to hook value', () => {
+    const service = createHookService<string>();
+    const mockHook = () => 'test-value';
+
+    const TestComponent = () => {
+      useHookService(service, 'test');
+      return null;
+    };
+
     render(
-      <HookProvider hooks={{ navigate: useNavigate }}>
-        <TestComponent service={service} hookName="navigate" />
+      <HookProvider hooks={{ test: mockHook }}>
+        <TestComponent />
       </HookProvider>
     );
 
-    expect(service.get()).toBe(mockNavigate);
+    expect(service.get()).toBe('test-value');
     expect(service.isReady()).toBe(true);
   });
 
-  it('should handle missing hook from provider', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+  it('should update service when hook value changes', () => {
+    const service = createHookService<number>();
+    let count = 0;
+    const mockHook = () => count;
 
-    render(
-      <HookProvider hooks={{}}>
-        <TestComponent service={service} hookName="nonexistent" />
+    const TestComponent = () => {
+      useHookService(service, 'counter');
+      return null;
+    };
+
+    const { rerender } = render(
+      <HookProvider hooks={{ counter: mockHook }}>
+        <TestComponent />
       </HookProvider>
     );
 
-    expect(service.get()).toBe(null);
-    expect(service.isReady()).toBe(false);
-    expect(consoleSpy).toHaveBeenCalled();
+    expect(service.get()).toBe(0);
 
-    consoleSpy.mockRestore();
+    count = 5;
+    rerender(
+      <HookProvider hooks={{ counter: mockHook }}>
+        <TestComponent />
+      </HookProvider>
+    );
+
+    expect(service.get()).toBe(5);
   });
 
-  it('should work with singleton services', () => {
-    const singletonService = createSingletonService('navigate');
+  it('should warn when hook name is not registered', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const service = createHookService();
+
+    const TestComponent = () => {
+      useHookService(service, 'nonexistent');
+      return null;
+    };
 
     render(
-      <HookProvider hooks={{ navigate: useNavigate }}>
-        <TestComponent service={singletonService} hookName="navigate" />
+      <HookProvider hooks={{ registered: () => 'value' }}>
+        <TestComponent />
       </HookProvider>
     );
 
-    expect(singletonService.get()).toBe(mockNavigate);
-    expect(singletonService.isReady()).toBe(true);
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Hook "nonexistent" is not registered')
+      );
+    });
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should suggest similar hook names when not found', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const service = createHookService();
+
+    const TestComponent = () => {
+      useHookService(service, 'navig');
+      return null;
+    };
+
+    render(
+      <HookProvider hooks={{ navigate: () => jest.fn(), navigation: () => jest.fn() }}>
+        <TestComponent />
+      </HookProvider>
+    );
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Did you mean one of these?')
+      );
+    });
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle object values', () => {
+    const service = createHookService<{ name: string; age: number }>();
+    const mockHook = () => ({ name: 'John', age: 30 });
+
+    const TestComponent = () => {
+      useHookService(service, 'user');
+      return null;
+    };
+
+    render(
+      <HookProvider hooks={{ user: mockHook }}>
+        <TestComponent />
+      </HookProvider>
+    );
+
+    expect(service.get()).toEqual({ name: 'John', age: 30 });
+  });
+
+  it('should handle function values', () => {
+    const mockNavigate = jest.fn();
+    const service = createHookService<typeof mockNavigate>();
+    const mockHook = () => mockNavigate;
+
+    const TestComponent = () => {
+      useHookService(service, 'navigate');
+      return null;
+    };
+
+    render(
+      <HookProvider hooks={{ navigate: mockHook }}>
+        <TestComponent />
+      </HookProvider>
+    );
+
+    const navigate = service.get();
+    expect(navigate).toBe(mockNavigate);
+  });
+
+  it('should work with multiple services', () => {
+    const authService = createHookService<{ user: string }>();
+    const navService = createHookService<() => void>();
+
+    const mockAuth = () => ({ user: 'John' });
+    const mockNav = () => jest.fn();
+
+    const TestComponent = () => {
+      useHookService(authService, 'auth');
+      useHookService(navService, 'navigate');
+      return null;
+    };
+
+    render(
+      <HookProvider hooks={{ auth: mockAuth, navigate: mockNav }}>
+        <TestComponent />
+      </HookProvider>
+    );
+
+    expect(authService.get()).toEqual({ user: 'John' });
+    expect(navService.get()).toBeInstanceOf(Function);
   });
 });
 
 describe('useHook', () => {
-  it('should return hook value directly', () => {
-    const { getByTestId } = render(
-      <HookProvider hooks={{ navigate: useNavigate }}>
-        <DirectHookComponent hookName="navigate" />
-      </HookProvider>
-    );
-
-    const hookValueElement = getByTestId('hook-value');
-    // Since mockNavigate is a function, JSON.stringify will return undefined, so we expect 'undefined'
-    expect(hookValueElement).toHaveTextContent('undefined');
+  beforeEach(() => {
+    resetAllServices();
   });
 
-  it('should return undefined for missing hook', () => {
-    const { getByTestId } = render(
-      <HookProvider hooks={{}}>
-        <DirectHookComponent hookName="nonexistent" />
+  it('should return hook value directly', () => {
+    const TestComponent = () => {
+      const value = useHook<string>('test');
+      return <div data-testid="value">{value}</div>;
+    };
+
+    render(
+      <HookProvider hooks={{ test: () => 'direct-value' }}>
+        <TestComponent />
       </HookProvider>
     );
 
-    const hookValueElement = getByTestId('hook-value');
-    expect(hookValueElement).toHaveTextContent('undefined');
+    const element = document.querySelector('[data-testid="value"]');
+    expect(element?.textContent).toBe('direct-value');
+  });
+
+  it('should return undefined for non-existent hook', () => {
+    const TestComponent = () => {
+      const value = useHook('nonexistent');
+      return <div data-testid="value">{value === undefined ? 'undefined' : 'defined'}</div>;
+    };
+
+    render(
+      <HookProvider hooks={{ test: () => 'value' }}>
+        <TestComponent />
+      </HookProvider>
+    );
+
+    const element = document.querySelector('[data-testid="value"]');
+    expect(element?.textContent).toBe('undefined');
+  });
+
+  it('should work with typed values', () => {
+    interface User {
+      name: string;
+      email: string;
+    }
+
+    const TestComponent = () => {
+      const user = useHook<User>('user');
+      return <div data-testid="user">{user ? user.name : 'no user'}</div>;
+    };
+
+    render(
+      <HookProvider hooks={{ user: () => ({ name: 'Jane', email: 'jane@example.com' }) }}>
+        <TestComponent />
+      </HookProvider>
+    );
+
+    const element = document.querySelector('[data-testid="user"]');
+    expect(element?.textContent).toBe('Jane');
   });
 });
 
 describe('useAllHooks', () => {
   it('should return all hook values', () => {
-    const { getByTestId } = render(
-      <HookProvider hooks={{ navigate: useNavigate, auth: useAuth }}>
-        <AllHooksComponent />
+    const TestComponent = () => {
+      const allHooks = useAllHooks();
+      return <div data-testid="hooks">{JSON.stringify(allHooks)}</div>;
+    };
+
+    render(
+      <HookProvider
+        hooks={{
+          hook1: () => 'value1',
+          hook2: () => 'value2',
+          hook3: () => 42,
+        }}
+      >
+        <TestComponent />
       </HookProvider>
     );
 
-    const allHooksElement = getByTestId('all-hooks');
-    const expectedHooks = { navigate: mockNavigate, auth: mockAuthData };
-    expect(allHooksElement).toHaveTextContent(JSON.stringify(expectedHooks));
+    const element = document.querySelector('[data-testid="hooks"]');
+    const parsed = JSON.parse(element?.textContent || '{}');
+
+    expect(parsed).toEqual({
+      hook1: 'value1',
+      hook2: 'value2',
+      hook3: 42,
+    });
   });
 
-  it('should return empty object when no hooks provided', () => {
-    const { getByTestId } = render(
+  it('should return empty object when no hooks', () => {
+    const TestComponent = () => {
+      const allHooks = useAllHooks();
+      return <div data-testid="hooks">{JSON.stringify(allHooks)}</div>;
+    };
+
+    render(
       <HookProvider hooks={{}}>
-        <AllHooksComponent />
+        <TestComponent />
       </HookProvider>
     );
 
-    const allHooksElement = getByTestId('all-hooks');
-    expect(allHooksElement).toHaveTextContent('{}');
-  });
-
-  it('should update when hooks change', () => {
-    const initialHooks = { navigate: useNavigate };
-    const updatedHooks = { navigate: useNavigate, auth: useAuth };
-
-    const { getByTestId, rerender } = render(
-      <HookProvider hooks={initialHooks}>
-        <AllHooksComponent />
-      </HookProvider>
-    );
-
-    expect(getByTestId('all-hooks')).toHaveTextContent(
-      JSON.stringify({ navigate: mockNavigate })
-    );
-
-    rerender(
-      <HookProvider hooks={updatedHooks}>
-        <AllHooksComponent />
-      </HookProvider>
-    );
-
-    expect(getByTestId('all-hooks')).toHaveTextContent(
-      JSON.stringify({ navigate: mockNavigate, auth: mockAuthData })
-    );
+    const element = document.querySelector('[data-testid="hooks"]');
+    expect(element?.textContent).toBe('{}');
   });
 });
-
-describe('Hook service with real React hooks', () => {
-  it('should work with stateful hooks', () => {
-    const useCounter = () => {
-      const [count, setCount] = useState(0);
-      return { count, increment: () => setCount((c) => c + 1) };
-    };
-
-    interface CounterHook {
-      count: number;
-      increment: () => void;
-    }
-
-    const service = createHookService<CounterHook>();
-
-    const TestApp = () => {
-      useHookService(service, 'counter');
-      const hookValue = service.get();
-      return <div data-testid="app">Count: {hookValue?.count || 0}</div>;
-    };
-
-    const { getByTestId } = render(
-      <HookProvider hooks={{ counter: useCounter }}>
-        <TestApp />
-      </HookProvider>
-    );
-
-    expect(service.isReady()).toBe(true);
-    expect(service.get()).toEqual(
-      expect.objectContaining({
-        count: 0,
-        increment: expect.any(Function),
-      })
-    );
-    expect(getByTestId('app')).toHaveTextContent('Count: 0');
-  });
-});
-
-// describe('Hook service integration', () => {
-//   it('should handle hook updates', () => {
-//     const service = createHookService();
-//     let triggerUpdate: () => void;
-
-//     const DynamicHookComponent = () => {
-//       const [value, setValue] = React.useState('initial');
-//       triggerUpdate = () => setValue('updated');
-//       return { value };
-//     };
-
-//     const TestApp = () => {
-//       useHookService(service, 'dynamic');
-//       return <div data-testid="app">App</div>;
-//     };
-
-//     render(
-//       <HookProvider hooks={{ dynamic: DynamicHookComponent }}>
-//         <TestApp />
-//       </HookProvider>
-//     );
-
-//     expect(service.get()).toEqual({ value: 'initial' });
-
-//     act(() => {
-//       triggerUpdate();
-//     });
-
-//     expect(service.get()).toEqual({ value: 'updated' });
-//   });
-
-// it('should work with real React hooks', () => {
-//   const useCounter = () => {
-//     const [count, setCount] = React.useState(0);
-//     return { count, increment: () => setCount(c => c + 1) };
-//   };
-
-//   const service = createHookService();
-
-//   const TestApp = () => {
-//     useHookService(service, 'counter');
-//     return <div data-testid="app">App</div>;
-//   };
-
-//   render(
-//     <HookProvider hooks={{ counter: useCounter }}>
-//       <TestApp />
-//     </HookProvider>
-//   );
-
-//   expect(service.isReady()).toBe(true);
-//   expect(service.get()).toEqual(expect.objectContaining({
-//     count: 0,
-//     increment: expect.any(Function)
-//   }));
-// });
-// });

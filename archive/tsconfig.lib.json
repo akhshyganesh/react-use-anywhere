@@ -14,7 +14,8 @@
     "lib/**/*"
   ],
   "exclude": [
-    "test/**/*",
+    "demo/**/*",
+    "examples/**/*",
     "**/*.test.*",
     "**/*.spec.*",
     "node_modules"
