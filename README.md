@@ -402,6 +402,13 @@ Yes! Adopt incrementally - start with one service, add more as needed.
 **What React versions are supported?**  
 React 16.8+ (all versions with hooks), including 17, 18, and 19.
 
+📚 **[View React Version Examples](./examples/)** - See comprehensive examples for each React version:
+
+- [React 16.8+ Example](./examples/react-16-example.tsx) - Hooks foundation
+- [React 17 Example](./examples/react-17-example.tsx) - JSX transform & cleanup
+- [React 18 Example](./examples/react-18-example.tsx) - Concurrent features & batching
+- [React 19 Example](./examples/react-19-example.tsx) - Actions & optimistic updates
+
 **What browsers are supported?**  
 Modern browsers: Chrome 60+, Firefox 55+, Safari 12+, Edge 79+. No IE11 support.
 

@@ -15,7 +15,7 @@ export function useHookService<T = unknown>(
   hookName: string
 ): void {
   const context = useHookContext();
-  const previousValueRef = useRef<T | undefined>();
+  const previousValueRef = useRef<T | undefined>(undefined);
 
   // Validate hook name
   useEffect(() => {
