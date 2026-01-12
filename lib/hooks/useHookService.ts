@@ -34,28 +34,26 @@ export function useHookService<T = unknown>(
           ? `\nDid you mean one of these?\n${suggestions.map((s) => `  • "${s}"`).join('\n')}`
           : '';
 
-      console.error(
-        `🚨 useHookService: Hook "${hookName}" is not registered in HookProvider.\n` +
-          `Available hooks: ${registeredHooks.map((h) => `"${h}"`).join(', ')}${suggestionText}`
-      );
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(
+          `🚨 useHookService: Hook "${hookName}" is not registered in HookProvider.\n` +
+            `Available hooks: ${registeredHooks.map((h) => `"${h}"`).join(', ')}${suggestionText}`
+        );
+      }
     }
   }, [hookName]);
 
   useEffect(() => {
     const hookValue = context[hookName] as T;
 
-    // Only update if the value actually changed (deep comparison for objects)
+    // Only update if the value actually changed (reference equality check)
+    // For better performance, we use reference equality instead of deep comparison
+    // If you need deep comparison, consider using React.memo or custom comparison
     if (hookValue !== previousValueRef.current) {
-      const hasChanged =
-        hookValue !== previousValueRef.current &&
-        JSON.stringify(hookValue) !== JSON.stringify(previousValueRef.current);
-
-      if (hasChanged || hookValue !== undefined) {
-        service._setValue(hookValue);
-        previousValueRef.current = hookValue;
-      }
+      service._setValue(hookValue);
+      previousValueRef.current = hookValue;
     }
-  }, [context[hookName], service]); // Only depend on the specific hook value, not entire context
+  }, [context[hookName], service, hookName]); // Only depend on the specific hook value, not entire context
 }
 
 /**

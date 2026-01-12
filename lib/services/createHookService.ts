@@ -21,12 +21,9 @@ export function createHookService<T = unknown>(): HookService<T> {
   return {
     // Internal method used by useHookService - don't call directly
     _setValue(newValue: T) {
-      // Only update if value actually changed
-      const hasChanged =
-        newValue !== value &&
-        JSON.stringify(newValue) !== JSON.stringify(value);
-
-      if (hasChanged || !ready) {
+      // Use reference equality for better performance
+      // This works well with React's state updates which maintain referential stability
+      if (newValue !== value || !ready) {
         value = newValue;
         ready = true;
       }
@@ -45,16 +42,20 @@ export function createHookService<T = unknown>(): HookService<T> {
     // Use the hook value in a callback - this is the main way to use hooks in non-React files
     use<R = unknown>(callback: (hookValue: T) => R): R | null {
       if (!ready) {
-        console.warn(
-          "Hook service not ready. Make sure you're using useHookService in a React component."
-        );
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            "Hook service not ready. Make sure you're using useHookService in a React component."
+          );
+        }
         return null;
       }
 
       try {
         return callback(value as T);
       } catch (error) {
-        console.error('Error using hook service:', error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Error using hook service:', error);
+        }
         return null;
       }
     },
@@ -77,10 +78,12 @@ function validateHookName(hookName: string): void {
   const registeredHooks = getRegisteredHookNames();
 
   if (registeredHooks.length === 0) {
-    console.warn(
-      `🚨 No hooks registered yet. Make sure to wrap your app with HookProvider first.\n` +
-        `Example: <HookProvider hooks={{ ${hookName}: your${hookName.charAt(0).toUpperCase() + hookName.slice(1)}Hook }}>`
-    );
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(
+        `🚨 No hooks registered yet. Make sure to wrap your app with HookProvider first.\n` +
+          `Example: <HookProvider hooks={{ ${hookName}: your${hookName.charAt(0).toUpperCase() + hookName.slice(1)}Hook }}>`
+      );
+    }
     return;
   }
 
@@ -98,12 +101,14 @@ function validateHookName(hookName: string): void {
         ? `\nDid you mean one of these?\n${suggestions.map((s) => `  • "${s}"`).join('\n')}`
         : '';
 
-    console.error(
-      `🚨 Hook "${hookName}" is not registered in HookProvider.\n` +
-        `Available hooks: ${registeredHooks.map((h) => `"${h}"`).join(', ')}${suggestionText}\n\n` +
-        `💡 Make sure your HookProvider includes:\n` +
-        `<HookProvider hooks={{ ${hookName}: your${hookName.charAt(0).toUpperCase() + hookName.slice(1)}Hook, ...other hooks }}>`
-    );
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(
+        `🚨 Hook "${hookName}" is not registered in HookProvider.\n` +
+          `Available hooks: ${registeredHooks.map((h) => `"${h}"`).join(', ')}${suggestionText}\n\n` +
+          `💡 Make sure your HookProvider includes:\n` +
+          `<HookProvider hooks={{ ${hookName}: your${hookName.charAt(0).toUpperCase() + hookName.slice(1)}Hook, ...other hooks }}>`
+      );
+    }
   }
 }
 

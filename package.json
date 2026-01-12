@@ -105,7 +105,7 @@
     "testMatch": [
       "<rootDir>/test/**/*.{test,spec}.{ts,tsx}"
     ],
-    "moduleNameMapping": {
+    "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/lib/$1"
     }
   },

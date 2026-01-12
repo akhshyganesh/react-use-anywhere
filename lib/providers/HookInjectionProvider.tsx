@@ -34,7 +34,9 @@ export const HookProvider = <T extends Record<string, ReactHook<unknown>>>({
     try {
       hookValues[name] = hook();
     } catch (error) {
-      console.warn(`Failed to execute hook "${name}":`, error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Failed to execute hook "${name}":`, error);
+      }
       hookValues[name] = undefined; // Fallback to undefined if hook fails
     }
   });
@@ -99,7 +101,7 @@ export const getHookRegistry = (): HookRegistry => globalHookRegistry;
  * Check if a hook name is registered
  */
 export const isHookRegistered = (hookName: string): boolean => {
-  return hookName in globalHookRegistry;
+  return Object.prototype.hasOwnProperty.call(globalHookRegistry, hookName);
 };
 
 /**
