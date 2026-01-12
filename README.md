@@ -180,6 +180,35 @@ export const toggleTheme = () => {
 
 ## 📚 Core API
 
+### `configureLogging({ enabled: boolean })`
+
+**New in v1.x** - Control debug logging output.
+
+```typescript
+import { configureLogging } from 'react-use-anywhere';
+
+// Enable logging for debugging (disabled by default)
+configureLogging({ enabled: true });
+
+// Disable logging (default - keeps console clean)
+configureLogging({ enabled: false });
+```
+
+**Note:** Logging only works in development mode (`NODE_ENV !== 'production'`). Logs are automatically disabled in production builds.
+
+**Best Practices:**
+
+- Keep disabled in production (default)
+- Enable temporarily when debugging hook connections
+- Use environment variables for conditional enabling
+
+```typescript
+// main.tsx - Only enable in development
+if (import.meta.env.DEV) {
+  configureLogging({ enabled: true });
+}
+```
+
 ### `HookProvider`
 
 Wrap your app to register hooks.
@@ -386,6 +415,7 @@ describe('authService', () => {
 - 🧪 **Easy testing** - Mock services, not components
 - 📦 **Tiny** - < 2KB gzipped, zero dependencies
 - 🚀 **Production-ready** - Battle-tested, no memory leaks
+- 🔇 **Clean console** - Logging disabled by default, enable when needed
 
 ---
 

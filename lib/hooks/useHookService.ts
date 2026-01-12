@@ -6,6 +6,7 @@ import {
   getRegisteredHookNames,
 } from '../providers/HookInjectionProvider';
 import type { HookService, ReactHook } from '../types';
+import { logger } from '../utils/logger';
 
 /**
  * Hook to connect a service to a hook value from the context
@@ -19,12 +20,10 @@ export function useHookService<T = unknown>(
   const previousValueRef = useRef<T | undefined>(undefined);
   const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(
-      `🔌 useHookService: Connecting service to hook "${hookName}"`,
-      context[hookName]
-    );
-  }
+  logger.log(
+    `🔌 useHookService: Connecting service to hook "${hookName}"`,
+    context[hookName]
+  );
 
   // Validate hook name
   useEffect(() => {
@@ -43,12 +42,10 @@ export function useHookService<T = unknown>(
           ? `\nDid you mean one of these?\n${suggestions.map((s) => `  • "${s}"`).join('\n')}`
           : '';
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.error(
-          `🚨 useHookService: Hook "${hookName}" is not registered in HookProvider.\n` +
-            `Available hooks: ${registeredHooks.map((h) => `"${h}"`).join(', ')}${suggestionText}`
-        );
-      }
+      logger.error(
+        `🚨 useHookService: Hook "${hookName}" is not registered in HookProvider.\n` +
+          `Available hooks: ${registeredHooks.map((h) => `"${h}"`).join(', ')}${suggestionText}`
+      );
     }
   }, [hookName]);
 
@@ -59,34 +56,28 @@ export function useHookService<T = unknown>(
     service._setValue(hookValue);
     previousValueRef.current = hookValue;
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(
-        `✅ useHookService: Value set for "${hookName}" during render. Service ready:`,
-        service.isReady()
-      );
-    }
+    logger.log(
+      `✅ useHookService: Value set for "${hookName}" during render. Service ready:`,
+      service.isReady()
+    );
   }
 
   useEffect(() => {
     const currentHookValue = context[hookName] as T;
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(
-        `📝 useHookService: Effect running for "${hookName}"`,
-        currentHookValue
-      );
-    }
+    logger.log(
+      `📝 useHookService: Effect running for "${hookName}"`,
+      currentHookValue
+    );
 
     // Update if value changed
     if (currentHookValue !== previousValueRef.current) {
       service._setValue(currentHookValue);
       previousValueRef.current = currentHookValue;
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(
-          `✅ useHookService: Value updated for "${hookName}" in effect`
-        );
-      }
+      logger.log(
+        `✅ useHookService: Value updated for "${hookName}" in effect`
+      );
 
       // Force a re-render so components using service.get() see the new value
       forceUpdate();

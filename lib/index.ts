@@ -24,6 +24,9 @@ export {
   createInferredSingletonService,
 } from './services/createHookService';
 
+// Logging configuration
+export { configureLogging, getLoggerConfig } from './utils/logger';
+
 // Type exports
 export type {
   ReactHook,

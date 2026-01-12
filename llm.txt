@@ -16,6 +16,19 @@ npm install react-use-anywhere
 
 ## Complete Working Example
 
+### Step 0: Optional - Configure Logging (index.tsx/main.tsx)
+```typescript
+import { configureLogging } from 'react-use-anywhere';
+
+// Enable logging for debugging (disabled by default)
+configureLogging({ enabled: true });
+
+// Disable logging for production (default)
+configureLogging({ enabled: false });
+```
+
+**Note:** Logging is **disabled by default**. Enable it only when debugging. Logs only appear in development mode (not production).
+
 ### Step 1: Setup Provider (App.tsx)
 ```tsx
 import { HookProvider } from 'react-use-anywhere';
@@ -458,6 +471,8 @@ function Dashboard() {
 - `resetAllServices()` - Reset all (testing)
 - `createHookService()` - Create new instance (rare)
 - `getSingletonService(hookName)` - Get existing singleton
+- `configureLogging({ enabled: boolean })` - Configure debug logging
+- `getLoggerConfig()` - Get current logging configuration
 
 ### Type-Safe Exports
 - `createTypedSingletonService<THooks, K>(hookName)`
@@ -474,6 +489,49 @@ function Dashboard() {
 5. **Never** call hooks directly in services (use service pattern)
 6. **Never** call `_setValue` directly (use `useHookService`)
 7. **Always** reset services in test cleanup with `resetAllServices()`
+8. **Optional** enable logging with `configureLogging({ enabled: true })` for debugging (disabled by default)
+
+## Logging Configuration
+
+### Overview
+By default, react-use-anywhere **does not log anything** to the console. This keeps your console clean in production.
+
+### Enable Logging
+When debugging, enable logging at app startup:
+```typescript
+import { configureLogging } from 'react-use-anywhere';
+
+// In your main.tsx or index.tsx (before rendering app)
+configureLogging({ enabled: true });
+```
+
+### What Gets Logged
+When enabled (and in development mode), you'll see:
+- Hook execution in HookProvider
+- Service connections via useHookService
+- Hook value updates
+- Error messages for misconfiguration
+- Warnings for invalid hook names
+
+### Best Practices
+- **Development**: Enable logging to debug hook connections
+- **Production**: Keep logging disabled (default)
+- **CI/CD**: Logging automatically disabled in production builds
+- **Troubleshooting**: Enable temporarily to diagnose issues
+
+### Example Configuration
+```typescript
+// main.tsx
+import { configureLogging } from 'react-use-anywhere';
+
+// Only enable in development
+if (import.meta.env.DEV) {
+  configureLogging({ enabled: true });
+}
+
+// Or use environment variable
+configureLogging({ enabled: import.meta.env.VITE_DEBUG === 'true' });
+```
 
 ## Compatibility
 - React: 16.8+ through 19.x

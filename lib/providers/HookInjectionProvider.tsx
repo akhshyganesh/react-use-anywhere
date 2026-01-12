@@ -6,6 +6,7 @@ import type {
   ReactHook,
   TypedHookProviderProps,
 } from '../types';
+import { logger } from '../utils/logger';
 
 // Create the context
 const HookContextValue = createContext<HookContext | null>(null);
@@ -39,26 +40,20 @@ export const HookProvider = <T extends Record<string, ReactHook<unknown>>>({
     try {
       // eslint-disable-next-line react-hooks/rules-of-hooks
       hookValues[name] = hook();
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(
-          `✅ HookProvider: Executed hook "${name}"`,
-          hookValues[name]
-        );
-      }
+      logger.log(
+        `✅ HookProvider: Executed hook "${name}"`,
+        hookValues[name]
+      );
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn(`Failed to execute hook "${name}":`, error);
-      }
+      logger.warn(`Failed to execute hook "${name}":`, error);
       hookValues[name] = undefined; // Fallback to undefined if hook fails
     }
   }
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(
-      '🎯 HookProvider: Providing context with hooks:',
-      Object.keys(hookValues)
-    );
-  }
+  logger.log(
+    '🎯 HookProvider: Providing context with hooks:',
+    Object.keys(hookValues)
+  );
 
   return (
     <HookContextValue.Provider value={hookValues}>
