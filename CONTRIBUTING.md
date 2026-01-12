@@ -27,7 +27,6 @@ Thank you for your interest in contributing! 🎉
    ```
 
 3. **Make Changes**
-
    - Write your code
    - Add tests for new features
    - Update documentation as needed
@@ -50,7 +49,6 @@ Thank you for your interest in contributing! 🎉
    ```
 
 6. **Open Pull Request**
-
    - Go to GitHub
    - Open a Pull Request from your branch
    - Fill in the PR template
@@ -81,6 +79,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - `perf:` - Performance improvements
 
 Examples:
+
 ```
 feat: add type-safe service creation
 fix: resolve memory leak in HookProvider
@@ -157,6 +156,7 @@ Found a bug? Please create an issue with:
 5. **Screenshots**: If applicable
 
 Example:
+
 ```markdown
 ## Bug: useHookService not updating on hook change
 
@@ -167,6 +167,7 @@ When hook value changes, service doesn't update immediately
 [Code example]
 
 **Environment:**
+
 - React: 18.2.0
 - react-use-anywhere: 1.0.0
 - Node: 18.0.0
@@ -212,10 +213,10 @@ describe('FeatureName', () => {
     it('should do something specific', () => {
       // Arrange
       const service = createSingletonService('test');
-      
+
       // Act
       service._setValue('value');
-      
+
       // Assert
       expect(service.get()).toBe('value');
     });
@@ -228,6 +229,7 @@ describe('FeatureName', () => {
 ## 🔄 Pull Request Process
 
 1. **Ensure all tests pass**
+
    ```bash
    npm run type-check
    npm run lint
@@ -273,18 +275,21 @@ Before submitting, verify:
 Looking for where to start? Consider:
 
 ### 🟢 Good First Issues
+
 - Documentation improvements
 - Adding code examples
 - Fixing typos
 - Adding tests
 
 ### 🟡 Intermediate
+
 - Bug fixes
 - Performance improvements
 - Refactoring
 - Additional type safety features
 
 ### 🔴 Advanced
+
 - New core features
 - Architecture improvements
 - Complex optimizations
@@ -309,6 +314,7 @@ This project follows the [Contributor Covenant Code of Conduct](./CODE_OF_CONDUC
 ## 🙏 Recognition
 
 Contributors will be:
+
 - Added to the contributors list
 - Mentioned in release notes
 - Credited in documentation

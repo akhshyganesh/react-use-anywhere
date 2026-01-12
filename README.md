@@ -187,13 +187,15 @@ Wrap your app to register hooks.
 ```tsx
 import { HookProvider } from 'react-use-anywhere';
 
-<HookProvider hooks={{ 
-  navigate: useNavigate,
-  auth: useAuth,
-  theme: useTheme 
-}}>
+<HookProvider
+  hooks={{
+    navigate: useNavigate,
+    auth: useAuth,
+    theme: useTheme,
+  }}
+>
   <App />
-</HookProvider>
+</HookProvider>;
 ```
 
 ### `createSingletonService(hookName)`
@@ -221,7 +223,7 @@ import { useHookService } from 'react-use-anywhere';
 function MyComponent() {
   useHookService(authService, 'auth');
   useHookService(navService, 'navigate');
-  
+
   // Now services are ready to use anywhere
   return <button onClick={logout}>Logout</button>;
 }
@@ -280,7 +282,7 @@ type AppHooks = {
 import { createStrictSingletonService } from 'react-use-anywhere';
 
 const navService = createStrictSingletonService<AppHooks>('navigate'); // ✅
-const badService = createStrictSingletonService<AppHooks>('invalid');  // ❌ TypeScript Error
+const badService = createStrictSingletonService<AppHooks>('invalid'); // ❌ TypeScript Error
 ```
 
 ---
@@ -296,7 +298,7 @@ import { useNavigate } from 'react-router-dom';
 
 <HookProvider hooks={{ navigate: useNavigate }}>
   <App />
-</HookProvider>
+</HookProvider>;
 ```
 
 ### TanStack Router
@@ -306,7 +308,7 @@ import { useRouter } from '@tanstack/react-router';
 
 <HookProvider hooks={{ router: useRouter }}>
   <App />
-</HookProvider>
+</HookProvider>;
 ```
 
 ### Next.js
@@ -316,16 +318,18 @@ import { useRouter } from 'next/router';
 
 <HookProvider hooks={{ router: useRouter }}>
   <App />
-</HookProvider>
+</HookProvider>;
 ```
 
 ### Any Custom Hook
 
 ```tsx
-<HookProvider hooks={{ 
-  customHook: useYourCustomHook,
-  anotherHook: useAnotherHook 
-}}>
+<HookProvider
+  hooks={{
+    customHook: useYourCustomHook,
+    anotherHook: useAnotherHook,
+  }}
+>
   <App />
 </HookProvider>
 ```
@@ -408,12 +412,12 @@ export const updateProfile = (data: ProfileData) => {
 ```typescript
 export const navigateWithAuth = (path: string) => {
   const isAuth = authService.use((auth) => auth.isAuthenticated);
-  
+
   if (!isAuth) {
     navService.use((nav) => nav('/login'));
     return false;
   }
-  
+
   navService.use((nav) => nav(path));
   return true;
 };
@@ -424,13 +428,13 @@ export const navigateWithAuth = (path: string) => {
 ```typescript
 export const performSecureAction = async (action: () => Promise<void>) => {
   const isAuth = authService.use((auth) => auth.isAuthenticated);
-  
+
   if (!isAuth) {
     notifyService.use((notify) => notify.error('Please login first'));
     navService.use((nav) => nav('/login'));
     return;
   }
-  
+
   try {
     await action();
   } catch (error) {

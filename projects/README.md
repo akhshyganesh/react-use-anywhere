@@ -37,7 +37,7 @@ export const counterService = createSingletonService<CounterHook>('counter');
 // Call React hooks from anywhere!
 export const incrementCounter = () => {
   counterService.use((counter) => {
-    counter.increment();  // Using useState from a service file!
+    counter.increment(); // Using useState from a service file!
   });
 };
 ```

@@ -44,13 +44,13 @@ describe('createHookService', () => {
     });
 
     it('should handle primitive values', () => {
-      service._setValue('test' as any);
+      service._setValue('test' as unknown as HookValue);
       expect(service.get()).toBe('test');
 
-      service._setValue(42 as any);
+      service._setValue(42 as unknown as HookValue);
       expect(service.get()).toBe(42);
 
-      service._setValue(true as any);
+      service._setValue(true as unknown as HookValue);
       expect(service.get()).toBe(true);
     });
 
@@ -87,7 +87,7 @@ describe('createHookService', () => {
       service._setValue(testValue);
 
       const result = service.use(
-        (value) => (value as { method: Function }).method
+        (value) => (value as { method: (() => void) }).method
       );
 
       expect(result).toBe(testValue.method);
@@ -104,7 +104,7 @@ describe('createHookService', () => {
     });
 
     it('should return the callback result', () => {
-      service._setValue({ value: 10 } as any);
+      service._setValue({ value: 10 } as unknown as HookValue);
 
       const result = service.use((val) => (val as { value: number }).value * 2);
       expect(result).toBe(20);

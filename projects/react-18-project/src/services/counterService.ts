@@ -1,13 +1,13 @@
 /**
  * Counter Service - Plain TypeScript file (NOT a React component!)
- * 
+ *
  * This demonstrates the core value of react-use-anywhere:
  * Using React hooks from ANYWHERE in your codebase, including:
  * - Service files
  * - Utility functions
  * - API clients
  * - Business logic modules
- * 
+ *
  * This file can be called from components, other services, or even
  * non-React code like event handlers, setTimeout callbacks, etc.
  */

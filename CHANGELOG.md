@@ -14,18 +14,21 @@ The first production-ready release of `react-use-anywhere` - a library that enab
 ### Features
 
 #### Core Functionality
+
 - **Hook Provider**: `HookProvider` component to register and execute hooks at the top level
 - **Service Creation**: `createSingletonService()` for creating shared service instances
 - **Hook Connection**: `useHookService()` to connect services to hook values in components
 - **Direct Access**: `useHook()` and `useAllHooks()` for direct hook value access
 
 #### Type Safety
+
 - **Full TypeScript Support**: Complete type definitions with generics
 - **Type-Safe Variants**: `createTypedSingletonService`, `createStrictSingletonService`
 - **Branded Types**: Compile-time hook name validation
 - **Type Inference**: Automatic type inference from hook definitions
 
 #### Developer Experience
+
 - **Zero Dependencies**: No external dependencies (React is a peer dependency)
 - **Tiny Bundle**: < 2KB gzipped
 - **Router Agnostic**: Works with any React router (React Router, TanStack Router, Next.js, etc.)
@@ -33,22 +36,26 @@ The first production-ready release of `react-use-anywhere` - a library that enab
 - **Production Ready**: Comprehensive error handling and validation
 
 #### Testing
+
 - **Test Utilities**: `resetAllServices()` for test isolation
 - **Full Coverage**: 50+ tests covering all functionality
 - **Integration Tests**: Real-world usage scenarios
 
 #### Performance
+
 - **Singleton Pattern**: Shared state for optimal performance
 - **Reference Equality**: Efficient update detection
 - **Tree Shakeable**: Optimized exports for minimal bundle size
 
 ### Compatibility
+
 - **React**: 16.8+ (all versions with hooks support)
 - **React DOM**: 16.8+
 - **TypeScript**: 5.0+
 - **Node**: 16+
 
 ### Documentation
+
 - Comprehensive README with examples
 - API documentation with TypeScript signatures
 - Contributing guidelines

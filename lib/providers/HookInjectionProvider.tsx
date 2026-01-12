@@ -40,7 +40,10 @@ export const HookProvider = <T extends Record<string, ReactHook<unknown>>>({
       // eslint-disable-next-line react-hooks/rules-of-hooks
       hookValues[name] = hook();
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`✅ HookProvider: Executed hook "${name}"`, hookValues[name]);
+        console.log(
+          `✅ HookProvider: Executed hook "${name}"`,
+          hookValues[name]
+        );
       }
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
@@ -51,7 +54,10 @@ export const HookProvider = <T extends Record<string, ReactHook<unknown>>>({
   }
 
   if (process.env.NODE_ENV !== 'production') {
-    console.log('🎯 HookProvider: Providing context with hooks:', Object.keys(hookValues));
+    console.log(
+      '🎯 HookProvider: Providing context with hooks:',
+      Object.keys(hookValues)
+    );
   }
 
   return (

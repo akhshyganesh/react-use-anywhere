@@ -13,10 +13,12 @@ We release patches for security vulnerabilities. Currently supported versions:
 We take the security of react-use-anywhere seriously. If you believe you have found a security vulnerability, please report it to us as described below.
 
 ### Please DO NOT:
+
 - Open a public GitHub issue for security vulnerabilities
 - Share the vulnerability publicly before it has been addressed
 
 ### Please DO:
+
 1. **Email us directly** at: akhshy.balakannan@gmail.com
 2. **Include in your report**:
    - Description of the vulnerability
@@ -26,6 +28,7 @@ We take the security of react-use-anywhere seriously. If you believe you have fo
 3. **Wait for our response** before public disclosure
 
 ### What to Expect:
+
 - **Response Time**: We will acknowledge your email within 48 hours
 - **Updates**: We will keep you informed about our progress
 - **Credit**: We will credit you in the security advisory (unless you prefer to remain anonymous)
@@ -34,7 +37,9 @@ We take the security of react-use-anywhere seriously. If you believe you have fo
 ## Security Considerations
 
 ### This Library
+
 react-use-anywhere is a lightweight library with:
+
 - ✅ Zero external dependencies (React is a peer dependency)
 - ✅ No network operations
 - ✅ No file system access
@@ -45,6 +50,7 @@ react-use-anywhere is a lightweight library with:
 ### Safe Usage Patterns
 
 **Do:**
+
 ```typescript
 // ✅ Safe: Using services for business logic
 const logout = () => {
@@ -54,6 +60,7 @@ const logout = () => {
 ```
 
 **Don't:**
+
 ```typescript
 // ❌ Unsafe: Storing sensitive data in services
 const passwordService = createSingletonService('password');
@@ -68,6 +75,7 @@ passwordService._setValue(userPassword); // Don't do this!
    - Tokens (use secure storage instead)
 
 2. **Validate user input** before using in services
+
    ```typescript
    const navigate = (path: string) => {
      if (!isValidPath(path)) return;
@@ -76,6 +84,7 @@ passwordService._setValue(userPassword); // Don't do this!
    ```
 
 3. **Use TypeScript** for type safety
+
    ```typescript
    const authService = createSingletonService<AuthState>('auth');
    ```
@@ -94,6 +103,7 @@ Currently, there are no known security issues. This section will be updated if a
 ## Security Updates
 
 Security updates will be:
+
 - Released as patch versions (e.g., 1.0.1)
 - Announced in the CHANGELOG
 - Published with a security advisory on GitHub
@@ -102,6 +112,7 @@ Security updates will be:
 ## Dependencies
 
 This library has:
+
 - **Zero runtime dependencies** (only React as peer dependency)
 - **Dev dependencies** (for building and testing)
   - Regularly updated to latest secure versions
@@ -111,6 +122,7 @@ This library has:
 ## Vulnerability Scanning
 
 We use:
+
 - GitHub Dependabot for dependency monitoring
 - npm audit for vulnerability scanning
 - Regular manual security reviews

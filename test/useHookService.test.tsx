@@ -1,9 +1,16 @@
 import React from 'react';
-import { render, renderHook, waitFor } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { HookProvider } from '../lib/providers/HookInjectionProvider';
-import { useHookService, useHook, useAllHooks } from '../lib/hooks/useHookService';
-import { createHookService, resetAllServices } from '../lib/services/createHookService';
+import {
+  useHookService,
+  useHook,
+  useAllHooks,
+} from '../lib/hooks/useHookService';
+import {
+  createHookService,
+  resetAllServices,
+} from '../lib/services/createHookService';
 
 describe('useHookService', () => {
   beforeEach(() => {
@@ -92,7 +99,9 @@ describe('useHookService', () => {
     };
 
     render(
-      <HookProvider hooks={{ navigate: () => jest.fn(), navigation: () => jest.fn() }}>
+      <HookProvider
+        hooks={{ navigate: () => jest.fn(), navigation: () => jest.fn() }}
+      >
         <TestComponent />
       </HookProvider>
     );
@@ -192,7 +201,11 @@ describe('useHook', () => {
   it('should return undefined for non-existent hook', () => {
     const TestComponent = () => {
       const value = useHook('nonexistent');
-      return <div data-testid="value">{value === undefined ? 'undefined' : 'defined'}</div>;
+      return (
+        <div data-testid="value">
+          {value === undefined ? 'undefined' : 'defined'}
+        </div>
+      );
     };
 
     render(
@@ -217,7 +230,9 @@ describe('useHook', () => {
     };
 
     render(
-      <HookProvider hooks={{ user: () => ({ name: 'Jane', email: 'jane@example.com' }) }}>
+      <HookProvider
+        hooks={{ user: () => ({ name: 'Jane', email: 'jane@example.com' }) }}
+      >
         <TestComponent />
       </HookProvider>
     );

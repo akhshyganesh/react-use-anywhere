@@ -20,7 +20,10 @@ export function useHookService<T = unknown>(
   const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
 
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`🔌 useHookService: Connecting service to hook "${hookName}"`, context[hookName]);
+    console.log(
+      `🔌 useHookService: Connecting service to hook "${hookName}"`,
+      context[hookName]
+    );
   }
 
   // Validate hook name
@@ -51,13 +54,16 @@ export function useHookService<T = unknown>(
 
   // Set the initial value synchronously during render
   const hookValue = context[hookName] as T;
-  
+
   if (hookValue !== previousValueRef.current) {
     service._setValue(hookValue);
     previousValueRef.current = hookValue;
-    
+
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`✅ useHookService: Value set for "${hookName}" during render. Service ready:`, service.isReady());
+      console.log(
+        `✅ useHookService: Value set for "${hookName}" during render. Service ready:`,
+        service.isReady()
+      );
     }
   }
 
@@ -65,22 +71,27 @@ export function useHookService<T = unknown>(
     const currentHookValue = context[hookName] as T;
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`📝 useHookService: Effect running for "${hookName}"`, currentHookValue);
+      console.log(
+        `📝 useHookService: Effect running for "${hookName}"`,
+        currentHookValue
+      );
     }
 
     // Update if value changed
     if (currentHookValue !== previousValueRef.current) {
       service._setValue(currentHookValue);
       previousValueRef.current = currentHookValue;
-      
+
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`✅ useHookService: Value updated for "${hookName}" in effect`);
+        console.log(
+          `✅ useHookService: Value updated for "${hookName}" in effect`
+        );
       }
-      
+
       // Force a re-render so components using service.get() see the new value
       forceUpdate();
     }
-  }, [context[hookName], service, hookName, forceUpdate]);
+  }, [context, service, hookName, forceUpdate]);
 }
 
 /**

@@ -10,13 +10,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false
   },
-  "include": [
-    "lib/**/*"
-  ],
-  "exclude": [
-    "test/**/*",
-    "**/*.test.*",
-    "**/*.spec.*",
-    "node_modules"
-  ]
+  "include": ["lib/**/*"],
+  "exclude": ["test/**/*", "**/*.test.*", "**/*.spec.*", "node_modules"]
 }

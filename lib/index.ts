@@ -1,22 +1,27 @@
 // Core exports
-export { HookProvider, TypedHookProvider, useHookContext, useTypedHookContext } from './providers/HookInjectionProvider';
-export { 
-  useHookService, 
-  useTypedHookService, 
-  useStrictHookService, 
-  useHook, 
-  useTypedHook, 
-  useStrictHook, 
-  useAllHooks 
+export {
+  HookProvider,
+  TypedHookProvider,
+  useHookContext,
+  useTypedHookContext,
+} from './providers/HookInjectionProvider';
+export {
+  useHookService,
+  useTypedHookService,
+  useStrictHookService,
+  useHook,
+  useTypedHook,
+  useStrictHook,
+  useAllHooks,
 } from './hooks/useHookService';
-export { 
-  createHookService, 
-  createSingletonService, 
-  getSingletonService, 
+export {
+  createHookService,
+  createSingletonService,
+  getSingletonService,
   resetAllServices,
   createTypedSingletonService,
   createStrictSingletonService,
-  createInferredSingletonService
+  createInferredSingletonService,
 } from './services/createHookService';
 
 // Type exports
@@ -31,5 +36,5 @@ export type {
   ExtractHookType,
   HookReturnTypes,
   ServiceFactory,
-  TypedServiceFactory
+  TypedServiceFactory,
 } from './types';

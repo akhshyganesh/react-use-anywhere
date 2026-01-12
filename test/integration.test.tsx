@@ -58,10 +58,12 @@ const handleLogout = () => {
 };
 
 const isUserAuthenticated = (): boolean => {
-  return authService.use((auth) => {
-    const authState = auth as AuthState | null;
-    return authState?.isAuthenticated ?? false;
-  }) ?? false;
+  return (
+    authService.use((auth) => {
+      const authState = auth as AuthState | null;
+      return authState?.isAuthenticated ?? false;
+    }) ?? false
+  );
 };
 
 // Component that connects services to hooks
@@ -180,13 +182,21 @@ describe('Integration Tests', () => {
       const Component1 = () => {
         useHookService(authService, 'auth');
         const handleClick = () => handleLogin({ username: 'user1' });
-        return <button data-testid="comp1-login" onClick={handleClick}>Login 1</button>;
+        return (
+          <button data-testid="comp1-login" onClick={handleClick}>
+            Login 1
+          </button>
+        );
       };
 
       const Component2 = () => {
         useHookService(authService, 'auth');
         const isAuth = isUserAuthenticated();
-        return <div data-testid="comp2-auth">{isAuth ? 'Authenticated' : 'Not Authenticated'}</div>;
+        return (
+          <div data-testid="comp2-auth">
+            {isAuth ? 'Authenticated' : 'Not Authenticated'}
+          </div>
+        );
       };
 
       render(
@@ -197,13 +207,17 @@ describe('Integration Tests', () => {
       );
 
       // Initially not authenticated
-      expect(screen.getByTestId('comp2-auth')).toHaveTextContent('Not Authenticated');
+      expect(screen.getByTestId('comp2-auth')).toHaveTextContent(
+        'Not Authenticated'
+      );
 
       // Login from component 1
       fireEvent.click(screen.getByTestId('comp1-login'));
 
       // State should update in component 2
-      expect(screen.getByTestId('comp2-auth')).toHaveTextContent('Authenticated');
+      expect(screen.getByTestId('comp2-auth')).toHaveTextContent(
+        'Authenticated'
+      );
     });
   });
 
